@@ -2,7 +2,6 @@
 #define NUMCOLS 8
 const byte rows[]={53,49,45,41,51,47,43,39};
 const byte cols[]={52,50,48,46,44,42,40,38};
-const int middleC=0x30;
 
 void setup() {
   // put your setup code here, to run once:
