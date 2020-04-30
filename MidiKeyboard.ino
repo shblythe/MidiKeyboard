@@ -1,4 +1,9 @@
 #include <MIDI.h>
+
+// These two options are mutually exclusive, since they both use the same serial port!
+#define SERIAL_DEBUG 0
+#define MIDI_HAIRLESS 1
+
 #define KB_NUMROWS 4
 #define KB_NUMCOLS 8
 const byte kbRows[]={53,49,45,41,51,47,43,39};
@@ -31,11 +36,14 @@ byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
 // r=1 c=1 => K1 3
 #define BTN_EDIT 3
 
+#if MIDI_HAIRLESS
+MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial,MIDI,midi::DefaultSettings);
+#else
 MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial1,MIDI,midi::DefaultSettings);
+#endif
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(115200);
   for (int i=0; i<KB_NUMCOLS; i++)
   {
     pinMode(kbCols[i],OUTPUT);
@@ -54,6 +62,7 @@ void setup() {
   memset(old_btnSwitchStates,LOW,BTN_NUMROWS*BTN_NUMCOLS);
   middleC=0x30;
   MIDI.begin();
+  Serial.begin(115200);
 }
 
 void loop() {
@@ -72,11 +81,13 @@ void loop() {
   }
   for (int i=0; i<KB_NUMROWS*KB_NUMCOLS; i++)
   {
+#if SERIAL_DEBUG
     if (kbSwitchStates[i]==HIGH)
     {
       Serial.print(note_names[i]);
       Serial.print(" ");
     }
+#endif
     if (kbSwitchStates[i]!=old_kbSwitchStates[i])
     {
       MIDI.sendNoteOn(middleC+i,(kbSwitchStates[i]==HIGH)?64:0,1);
@@ -107,23 +118,33 @@ void loop() {
         switch (i)
         {
           case BTN_DATA_MINUS:
+#if SERIAL_DEBUG
             Serial.print("DATA-");
+#endif    
             middleC-=12;
             break;
           case BTN_DATA_PLUS:
+#if SERIAL_DEBUG          
             Serial.print("DATA+");
+#endif            
             middleC+=12;
             break;
           case BTN_EDIT:
+#if SERIAL_DEBUG          
             Serial.print("EDIT");
+#endif            
             break;
           case BTN_CTRL_SWITCH:
+#if SERIAL_DEBUG          
             Serial.print("SWITCH");
+#endif            
             break;
         }
       }
       old_btnSwitchStates[i]=btnSwitchStates[i];
     }
   }
+#if SERIAL_DEBUG  
   Serial.println();
+#endif  
 }
