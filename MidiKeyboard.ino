@@ -1,12 +1,12 @@
 #include <MIDI.h>
-#define NUMROWS 4
-#define NUMCOLS 8
-const byte rows[]={53,49,45,41,51,47,43,39};
-const byte cols[]={52,50,48,46,44,42,40,38};
-const int middleC=0x30;
+#define KB_NUMROWS 4
+#define KB_NUMCOLS 8
+const byte kbRows[]={53,49,45,41,51,47,43,39};
+const byte kbCols[]={52,50,48,46,44,42,40,38};
+int middleC;
 
-byte switch_states[NUMROWS*NUMCOLS];
-byte old_switch_states[NUMROWS*NUMCOLS];
+byte kbSwitchStates[KB_NUMROWS*KB_NUMCOLS];
+byte old_kbSwitchStates[KB_NUMROWS*KB_NUMCOLS];
 
 const char* note_names[]={
   "C1", "C#1", "D1", "D#1", "E1", "F1", "F#1", "G1", "G#1", "A1", "A#1", "B1",
@@ -14,47 +14,115 @@ const char* note_names[]={
   "C3"
 };
 
+#define BTN_NUMROWS 2
+#define BTN_NUMCOLS 2
+const int btnRows[]={A8,7};
+const int btnCols[]={A9,A11};
+byte btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
+byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
+
+// Button names numbered by r*BTN_NUMCOLS+c
+// r=0 c=0 => K3 0
+#define BTN_DATA_MINUS 0
+// r=0 c=1 => K2 1
+#define BTN_DATA_PLUS 1
+// r=1 c=0 => K4 2
+#define BTN_CTRL_SWITCH 2
+// r=1 c=1 => K1 3
+#define BTN_EDIT 3
+
 MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial1,MIDI,midi::DefaultSettings);
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  for (int i=0; i<NUMCOLS; i++)
+  for (int i=0; i<KB_NUMCOLS; i++)
   {
-    pinMode(cols[i],OUTPUT);
-    digitalWrite(cols[i],LOW);
+    pinMode(kbCols[i],OUTPUT);
+    digitalWrite(kbCols[i],LOW);
   } 
-  for (int i=0; i<NUMROWS; i++)
-    pinMode(rows[i],INPUT);
-  memset(old_switch_states,LOW,NUMROWS*NUMCOLS);
+  for (int i=0; i<KB_NUMROWS; i++)
+    pinMode(kbRows[i],INPUT);
+  memset(old_kbSwitchStates,LOW,KB_NUMROWS*KB_NUMCOLS);
+  for (int i=0; i<BTN_NUMCOLS; i++)
+  {
+    pinMode(btnCols[i],OUTPUT);
+    digitalWrite(btnCols[i],LOW);
+  } 
+  for (int i=0; i<BTN_NUMROWS; i++)
+    pinMode(btnRows[i],INPUT);
+  memset(old_btnSwitchStates,LOW,BTN_NUMROWS*BTN_NUMCOLS);
+  middleC=0x30;
   MIDI.begin();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  digitalWrite(cols[NUMCOLS-1],LOW);
-  for (int c=0; c<NUMCOLS; c++)
+  // Keyboard
+  digitalWrite(kbCols[KB_NUMCOLS-1],LOW);
+  for (int c=0; c<KB_NUMCOLS; c++)
   {
     if (c==0)
-      digitalWrite(cols[NUMCOLS-1],LOW);
+      digitalWrite(kbCols[KB_NUMCOLS-1],LOW);
     else
-      digitalWrite(cols[c-1],LOW);
-    digitalWrite(cols[c],HIGH);
+      digitalWrite(kbCols[c-1],LOW);
+    digitalWrite(kbCols[c],HIGH);
     //delay(1);
-    for (int r=0; r<NUMROWS; r++)
-      switch_states[r*NUMCOLS+c]=digitalRead(rows[r]);
+    for (int r=0; r<KB_NUMROWS; r++)
+      kbSwitchStates[r*KB_NUMCOLS+c]=digitalRead(kbRows[r]);
   }
-  for (int i=0; i<NUMROWS*NUMCOLS; i++)
+  for (int i=0; i<KB_NUMROWS*KB_NUMCOLS; i++)
   {
-    if (switch_states[i]==HIGH)
+    if (kbSwitchStates[i]==HIGH)
     {
       Serial.print(note_names[i]);
       Serial.print(" ");
     }
-    if (switch_states[i]!=old_switch_states[i])
+    if (kbSwitchStates[i]!=old_kbSwitchStates[i])
     {
-      MIDI.sendNoteOn(middleC+i,(switch_states[i]==HIGH)?64:0,1);
-      old_switch_states[i]=switch_states[i];
+      MIDI.sendNoteOn(middleC+i,(kbSwitchStates[i]==HIGH)?64:0,1);
+      old_kbSwitchStates[i]=kbSwitchStates[i];
+    }
+  }
+  // Buttons
+  digitalWrite(btnCols[BTN_NUMCOLS-1],LOW);
+  for (int c=0; c<BTN_NUMCOLS; c++)
+  {
+    if (c==0)
+      digitalWrite(btnCols[BTN_NUMCOLS-1],LOW);
+    else
+      digitalWrite(btnCols[c-1],LOW);
+    digitalWrite(btnCols[c],HIGH);
+    //delay(1);
+    for (int r=0; r<BTN_NUMROWS; r++)
+    {
+      btnSwitchStates[r*BTN_NUMCOLS+c]=digitalRead(btnRows[r]);
+    }
+  }
+  for (int i=0; i<BTN_NUMROWS*BTN_NUMCOLS; i++)
+  {
+    if (btnSwitchStates[i]!=old_btnSwitchStates[i])
+    {
+      if (btnSwitchStates[i]==HIGH)
+      {
+        switch (i)
+        {
+          case BTN_DATA_MINUS:
+            Serial.print("DATA-");
+            middleC-=12;
+            break;
+          case BTN_DATA_PLUS:
+            Serial.print("DATA+");
+            middleC+=12;
+            break;
+          case BTN_EDIT:
+            Serial.print("EDIT");
+            break;
+          case BTN_CTRL_SWITCH:
+            Serial.print("SWITCH");
+            break;
+        }
+      }
+      old_btnSwitchStates[i]=btnSwitchStates[i];
     }
   }
   Serial.println();
