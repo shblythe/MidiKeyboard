@@ -1,14 +1,24 @@
 #include <MIDI.h>
 
 // These two options are mutually exclusive, since they both use the same serial port!
-#define SERIAL_DEBUG 0
-#define MIDI_HAIRLESS 1
+#define SERIAL_DEBUG 1
+#define MIDI_HAIRLESS 0
 
+#if MIDI_HAIRLESS
+MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial,MIDI,midi::DefaultSettings);
+#else
+MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial1,MIDI,midi::DefaultSettings);
+#endif
+
+int middleC;
+
+/*
+ * Keyboard MUX handler
+ */
 #define KB_NUMROWS 4
 #define KB_NUMCOLS 8
 const byte kbRows[]={53,49,45,41,51,47,43,39};
 const byte kbCols[]={52,50,48,46,44,42,40,38};
-int middleC;
 
 byte kbSwitchStates[KB_NUMROWS*KB_NUMCOLS];
 byte old_kbSwitchStates[KB_NUMROWS*KB_NUMCOLS];
@@ -19,31 +29,8 @@ const char* note_names[]={
   "C3"
 };
 
-#define BTN_NUMROWS 2
-#define BTN_NUMCOLS 2
-const int btnRows[]={2,7};
-const int btnCols[]={A9,A11};
-byte btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
-byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
-
-// Button names numbered by r*BTN_NUMCOLS+c
-// r=0 c=0 => K3 0
-#define BTN_DATA_MINUS 0
-// r=0 c=1 => K2 1
-#define BTN_DATA_PLUS 1
-// r=1 c=0 => K4 2
-#define BTN_CTRL_SWITCH 2
-// r=1 c=1 => K1 3
-#define BTN_EDIT 3
-
-#if MIDI_HAIRLESS
-MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial,MIDI,midi::DefaultSettings);
-#else
-MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial1,MIDI,midi::DefaultSettings);
-#endif
-
-void setup() {
-  // put your setup code here, to run once:
+void setupKeys()
+{
   for (int i=0; i<KB_NUMCOLS; i++)
   {
     pinMode(kbCols[i],OUTPUT);
@@ -52,21 +39,10 @@ void setup() {
   for (int i=0; i<KB_NUMROWS; i++)
     pinMode(kbRows[i],INPUT);
   memset(old_kbSwitchStates,LOW,KB_NUMROWS*KB_NUMCOLS);
-  for (int i=0; i<BTN_NUMCOLS; i++)
-  {
-    pinMode(btnCols[i],OUTPUT);
-    digitalWrite(btnCols[i],LOW);
-  } 
-  for (int i=0; i<BTN_NUMROWS; i++)
-    pinMode(btnRows[i],INPUT);
-  memset(old_btnSwitchStates,LOW,BTN_NUMROWS*BTN_NUMCOLS);
-  middleC=0x30;
-  MIDI.begin();
-  Serial.begin(115200);
 }
 
-void loop() {
-  // Keyboard
+void loopKeys()
+{
   digitalWrite(kbCols[KB_NUMCOLS-1],LOW);
   for (int c=0; c<KB_NUMCOLS; c++)
   {
@@ -94,7 +70,41 @@ void loop() {
       old_kbSwitchStates[i]=kbSwitchStates[i];
     }
   }
-  // Buttons
+}
+/*
+ * Button MUX handler
+ */
+#define BTN_NUMROWS 2
+#define BTN_NUMCOLS 2
+const int btnRows[]={2,7};
+const int btnCols[]={A9,A11};
+byte btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
+byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
+
+// Button names numbered by r*BTN_NUMCOLS+c
+// r=0 c=0 => K3 0
+#define BTN_DATA_MINUS 0
+// r=0 c=1 => K2 1
+#define BTN_DATA_PLUS 1
+// r=1 c=0 => K4 2
+#define BTN_CTRL_SWITCH 2
+// r=1 c=1 => K1 3
+#define BTN_EDIT 3
+
+void setupButtons()
+{
+  for (int i=0; i<BTN_NUMCOLS; i++)
+  {
+    pinMode(btnCols[i],OUTPUT);
+    digitalWrite(btnCols[i],LOW);
+  } 
+  for (int i=0; i<BTN_NUMROWS; i++)
+    pinMode(btnRows[i],INPUT);
+  memset(old_btnSwitchStates,LOW,BTN_NUMROWS*BTN_NUMCOLS);
+}
+
+void loopButtons()
+{
   digitalWrite(btnCols[BTN_NUMCOLS-1],LOW);
   for (int c=0; c<BTN_NUMCOLS; c++)
   {
@@ -144,6 +154,25 @@ void loop() {
       old_btnSwitchStates[i]=btnSwitchStates[i];
     }
   }
+}
+/*
+ * LED MUX handler
+ */
+
+/*
+ * Main program
+ */
+void setup() {
+  setupKeys();
+  setupButtons();
+  middleC=0x30;
+  MIDI.begin();
+  Serial.begin(115200);
+}
+
+void loop() {
+  loopKeys();
+  loopButtons();
 #if SERIAL_DEBUG  
   Serial.println();
 #endif  
