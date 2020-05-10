@@ -21,7 +21,7 @@ const char* note_names[]={
 
 #define BTN_NUMROWS 2
 #define BTN_NUMCOLS 2
-const int btnRows[]={A8,7};
+const int btnRows[]={2,7};
 const int btnCols[]={A9,A11};
 byte btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
 byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
