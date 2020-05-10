@@ -158,13 +158,77 @@ void loopButtons()
 /*
  * LED MUX handler
  */
+#define LED_NUMROWS 4   // anodes
+#define LED_NUMCOLS 8   // cathodes
+const int ledRows[] = { A3, 19, 16, 14 };
+const int ledCols[] = { A4, 17, A5, 20, A6, A7, A10, 15 };
+byte ledStates[LED_NUMROWS*LED_NUMCOLS];
+int ledRow;
+#define LEDROWON HIGH
+#define LEDROWOFF LOW
+#define LEDCOLON LOW
+#define LEDCOLOFF HIGH
+// Individual LEDs defined by index of r*LED_NUMCOLS+c
+#define LED_R5R8 0
+#define LED_EDIT 1
+#define LED_R1R4 2
+#define LED_DATA_MINUS 5
+#define LED_DATA_PLUS 7
 
+void setupLEDs() {
+  for (int i=0; i<LED_NUMROWS; i++)
+  {
+    pinMode(ledRows[i],OUTPUT);
+    digitalWrite(ledRows[i],LEDROWOFF);
+  }
+  for (int i=0; i<LED_NUMCOLS; i++)
+  {
+    pinMode(ledCols[i],OUTPUT);
+    digitalWrite(ledCols[i],LEDCOLOFF);
+  }
+  memset(ledStates,LOW,LED_NUMROWS*LED_NUMCOLS);
+  ledRow=0;
+}
+
+void loopLEDs() {
+  // Just one row each time this is called, to leave them on for a bit
+  digitalWrite(ledRows[ledRow>0?(ledRow-1):(LED_NUMROWS-1)],LEDROWOFF);
+  for (int c=0; c<LED_NUMCOLS; c++)
+    digitalWrite(ledCols[c],ledStates[ledRow*LED_NUMCOLS+c]?LEDCOLON:LEDCOLOFF);
+  digitalWrite(ledRows[ledRow],LEDROWON);
+  ledRow++;
+  if (ledRow>=LED_NUMROWS)
+    ledRow=0;
+}
+
+const byte testLEDs[]={LED_EDIT, LED_DATA_PLUS, LED_DATA_MINUS, LED_R1R4, LED_R5R8 };
+#define NUM_TEST_LEDS 5
+unsigned long nextTestLEDsStep;
+int testLEDsIndex;
+#define TEST_LED_STEP_MS 500
+void setupTestCycleLEDs() {
+  nextTestLEDsStep=0;
+  testLEDsIndex=0;
+}
+void loopTestCycleLEDs() {
+  if (millis()>nextTestLEDsStep)
+  {
+    ledStates[testLEDs[testLEDsIndex>0?(testLEDsIndex-1):(NUM_TEST_LEDS-1)]]=0;
+    ledStates[testLEDs[testLEDsIndex]]=1;
+    nextTestLEDsStep+=TEST_LED_STEP_MS;
+    testLEDsIndex++;
+    if (testLEDsIndex>=NUM_TEST_LEDS)
+      testLEDsIndex=0;
+  }
+}
 /*
  * Main program
  */
 void setup() {
   setupKeys();
   setupButtons();
+  setupLEDs();
+  setupTestCycleLEDs();
   middleC=0x30;
   MIDI.begin();
   Serial.begin(115200);
@@ -173,6 +237,8 @@ void setup() {
 void loop() {
   loopKeys();
   loopButtons();
+  loopLEDs();
+  loopTestCycleLEDs();
 #if SERIAL_DEBUG  
   Serial.println();
 #endif  
