@@ -161,7 +161,7 @@ void loopButtons()
 #define LED_NUMROWS 4   // anodes
 #define LED_NUMCOLS 8   // cathodes
 const int ledRows[] = { A3, 19, 16, 14 };
-const int ledCols[] = { A4, 17, A5, 20, A6, A7, A10, 15 };
+const int ledCols[] = { 17, 15, A7, A5, A4, 20, A10, A6 };
 byte ledStates[LED_NUMROWS*LED_NUMCOLS];
 int ledRow;
 #define LEDROWON HIGH
@@ -169,11 +169,14 @@ int ledRow;
 #define LEDCOLON LOW
 #define LEDCOLOFF HIGH
 // Individual LEDs defined by index of r*LED_NUMCOLS+c
-#define LED_R5R8 0
-#define LED_EDIT 1
-#define LED_R1R4 2
-#define LED_DATA_MINUS 5
-#define LED_DATA_PLUS 7
+#define LED_R5R8 4
+#define LED_EDIT 0
+#define LED_R1R4 3
+#define LED_DATA_MINUS 2
+#define LED_DATA_PLUS 1
+#define LED_DIG1_DP 15
+#define LED_DIG2_DP 23
+#define LED_DIG3_DP 31
 
 void setupLEDs() {
   for (int i=0; i<LED_NUMROWS; i++)
@@ -201,8 +204,8 @@ void loopLEDs() {
     ledRow=0;
 }
 
-const byte testLEDs[]={LED_EDIT, LED_DATA_PLUS, LED_DATA_MINUS, LED_R1R4, LED_R5R8 };
-#define NUM_TEST_LEDS 5
+const byte testLEDs[]={LED_EDIT, LED_DATA_PLUS, LED_DATA_MINUS, LED_DIG1_DP, LED_DIG2_DP, LED_DIG3_DP, LED_R1R4, LED_R5R8 };
+#define NUM_TEST_LEDS 8
 unsigned long nextTestLEDsStep;
 int testLEDsIndex;
 #define TEST_LED_STEP_MS 500
