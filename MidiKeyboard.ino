@@ -2,7 +2,12 @@
 
 // These two options are mutually exclusive, since they both use the same serial port!
 #define SERIAL_DEBUG 0
-#define MIDI_HAIRLESS 0
+#define MIDI_HAIRLESS 1
+#if (SERIAL_DEBUG && MIDI_HAIRLESS)
+#error
+#endif 
+
+#define LED_TEST 0
 
 #if MIDI_HAIRLESS
 MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial,MIDI,midi::DefaultSettings);
@@ -222,6 +227,7 @@ void loopLEDs() {
     ledRow=0;
 }
 
+#if LED_TEST
 const byte testLEDs[]={LED_EDIT, LED_DATA_PLUS, LED_DATA_MINUS, LED_DIG1_DP, LED_DIG2_DP, LED_DIG3_DP, LED_R1R4, LED_R5R8 };
 #define NUM_TEST_LEDS 8
 unsigned long nextTestLEDsStep;
@@ -252,6 +258,10 @@ void loopTestCycleLEDs() {
       testDigits=0;
   }
 }
+#else
+inline void setupTestCycleLEDs() {}
+inline void loopTestCycleLEDs() {}
+#endif
 /*
  * Main program
  */
