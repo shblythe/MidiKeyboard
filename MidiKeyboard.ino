@@ -1,7 +1,7 @@
 #include <MIDI.h>
 
 // These two options are mutually exclusive, since they both use the same serial port!
-#define SERIAL_DEBUG 1
+#define SERIAL_DEBUG 0
 #define MIDI_HAIRLESS 0
 
 #if MIDI_HAIRLESS
@@ -160,14 +160,27 @@ void loopButtons()
  */
 #define LED_NUMROWS 4   // anodes
 #define LED_NUMCOLS 8   // cathodes
-const int ledRows[] = { A3, 19, 16, 14 };
-const int ledCols[] = { 17, 15, A7, A5, A4, 20, A10, A6 };
-byte ledStates[LED_NUMROWS*LED_NUMCOLS];
-int ledRow;
 #define LEDROWON HIGH
 #define LEDROWOFF LOW
 #define LEDCOLON LOW
 #define LEDCOLOFF HIGH
+const int ledRows[] = { A3, 21, 16, 14 };
+const int ledCols[] = { 17, 15, A7, A5, A4, 20, A10, A6 };
+const byte digitSegs[10][7] = {
+  //        a  b  c  d  e  f  g
+  /* 0 */ { 1, 1, 1, 1, 1, 1, 0 },
+  /* 1 */ { 0, 1, 1, 0, 0, 0, 0 },
+  /* 2 */ { 1, 1, 0, 1, 1, 0, 1 },
+  /* 3 */ { 1, 1, 1, 1, 0, 0, 1 },
+  /* 4 */ { 0, 1, 1, 0, 0, 1, 1 },
+  /* 5 */ { 1, 0, 1, 1, 0, 1, 1 },
+  /* 6 */ { 1, 0, 1, 1, 1, 1, 1 },
+  /* 7 */ { 1, 1, 1, 0, 0, 0, 0 },
+  /* 8 */ { 1, 1, 1, 1, 1, 1, 1 },
+  /* 9 */ { 1, 1, 1, 1, 0, 1, 1 }
+};
+byte ledStates[LED_NUMROWS*LED_NUMCOLS];
+int ledRow;
 // Individual LEDs defined by index of r*LED_NUMCOLS+c
 #define LED_R5R8 4
 #define LED_EDIT 0
@@ -177,6 +190,11 @@ int ledRow;
 #define LED_DIG1_DP 15
 #define LED_DIG2_DP 23
 #define LED_DIG3_DP 31
+
+void setDigit(int index, int value)
+{
+  memcpy(&ledStates[(index+1)*LED_NUMCOLS],digitSegs[value],7);
+}
 
 void setupLEDs() {
   for (int i=0; i<LED_NUMROWS; i++)
@@ -208,6 +226,7 @@ const byte testLEDs[]={LED_EDIT, LED_DATA_PLUS, LED_DATA_MINUS, LED_DIG1_DP, LED
 #define NUM_TEST_LEDS 8
 unsigned long nextTestLEDsStep;
 int testLEDsIndex;
+int testDigits=0;
 #define TEST_LED_STEP_MS 500
 void setupTestCycleLEDs() {
   nextTestLEDsStep=0;
@@ -222,6 +241,15 @@ void loopTestCycleLEDs() {
     testLEDsIndex++;
     if (testLEDsIndex>=NUM_TEST_LEDS)
       testLEDsIndex=0;
+    int digitVal=testDigits;
+    setDigit(2,digitVal%10);
+    digitVal/=10;
+    setDigit(1,digitVal%10);
+    digitVal/=10;
+    setDigit(0,digitVal);
+    testDigits++;
+    if (testDigits>999)
+      testDigits=0;
   }
 }
 /*
@@ -235,7 +263,7 @@ void setup() {
   middleC=0x30;
   MIDI.begin();
   Serial.begin(115200);
-}
+ }
 
 void loop() {
   loopKeys();
