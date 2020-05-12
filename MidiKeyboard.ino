@@ -14,8 +14,21 @@ MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial,MIDI,midi::DefaultSettings);
 #else
 MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial1,MIDI,midi::DefaultSettings);
 #endif
-
+#define DEFAULT_MIDDLE_C 0x30
 int middleC;
+
+typedef enum {
+  enBankR1_4,
+  enBankR5_8
+} Bank;
+Bank bank;
+
+bool editMode;
+
+#define MAX_RVAL_INDEX 8
+byte rVal[MAX_RVAL_INDEX];
+#define MAX_RVAL 127
+#define RVAL_BANK_SIZE 4
 
 /*
  * Keyboard MUX handler
@@ -79,9 +92,9 @@ void loopKeys()
 /*
  * Button MUX handler
  */
-#define BTN_NUMROWS 2
+#define BTN_NUMROWS 6
 #define BTN_NUMCOLS 2
-const int btnRows[]={2,7};
+const int btnRows[]={2,7,3,4,5,6};
 const int btnCols[]={A9,A11};
 byte btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
 byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
@@ -95,9 +108,24 @@ byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
 #define BTN_CTRL_SWITCH 2
 // r=1 c=1 => K1 3
 #define BTN_EDIT 3
+// r=2 c=0 => K11L
+#define BTN_R15L 4
+// r=2 c=1 => K11R
+#define BTN_R15R 5
+// r=3 c=0 => K12L
+#define BTN_R26L 6
+// etc.
+#define BTN_R26R 7
+#define BTN_R37L 8
+#define BTN_R37R 9
+#define BTN_R48L 10
+#define BTN_R48R 11
+#define BTN_MINR  BTN_R15L
+#define BTN_MAXR  BTN_R48R
 
 void setupButtons()
 {
+  bank=enBankR1_4;
   for (int i=0; i<BTN_NUMCOLS; i++)
   {
     pinMode(btnCols[i],OUTPUT);
@@ -128,7 +156,38 @@ void loopButtons()
   {
     if (btnSwitchStates[i]!=old_btnSwitchStates[i])
     {
-      if (btnSwitchStates[i]==HIGH)
+      // Rotary encoders
+      if (i>=BTN_MINR && i<=BTN_MAXR)
+      {
+        int index=(i-BTN_MINR)/2;
+        bool increment=true;
+        if (bank==enBankR5_8)
+          index+=RVAL_BANK_SIZE;
+        // The rotary encoder moves through the following states for the two switches:
+        // AB = 00 01 11 10
+        // So, if A changes to a state where A==B, or B changes to a state where A!=B
+        // then that is one direction.
+        // A changing to A!=B, or B changing to A==B is the other direction.
+        if ((i-BTN_MINR)%2==0)  // A
+        {
+          if (btnSwitchStates[i]==btnSwitchStates[i+1])
+            increment=false;
+        }
+        else  // B
+        {
+          if (btnSwitchStates[i-1]!=btnSwitchStates[i])
+            increment=false;
+        }
+        if (increment)
+        {
+          if (rVal[index]<MAX_RVAL)
+            rVal[index]++;
+        }
+        else if (rVal[index]>0)
+          rVal[index]--;
+        displayLEDsValue(rVal[index]);
+      }
+      else if (btnSwitchStates[i]==HIGH)
       {
         switch (i)
         {
@@ -145,11 +204,16 @@ void loopButtons()
             middleC+=12;
             break;
           case BTN_EDIT:
+            editMode=!editMode;
 #if SERIAL_DEBUG          
             Serial.print("EDIT");
 #endif            
             break;
           case BTN_CTRL_SWITCH:
+            if (bank==enBankR1_4)
+              bank=enBankR5_8;
+            else
+              bank=enBankR1_4;
 #if SERIAL_DEBUG          
             Serial.print("SWITCH");
 #endif            
@@ -201,6 +265,15 @@ void setDigit(int index, int value)
   memcpy(&ledStates[(index+1)*LED_NUMCOLS],digitSegs[value],7);
 }
 
+void displayLEDsValue(int value)
+{
+  setDigit(2,value%10);
+  value/=10;
+  setDigit(1,value%10);
+  value/=10;
+  setDigit(0,value);
+}
+
 void setupLEDs() {
   for (int i=0; i<LED_NUMROWS; i++)
   {
@@ -217,6 +290,13 @@ void setupLEDs() {
 }
 
 void loopLEDs() {
+  // Update any status LEDs that should have changed state
+  ledStates[LED_R1R4]=(bank==enBankR1_4)?1:0;
+  ledStates[LED_R5R8]=(bank==enBankR5_8)?1:0;
+  ledStates[LED_EDIT]=editMode?1:0;
+  ledStates[LED_DATA_PLUS]=(!editMode && middleC>DEFAULT_MIDDLE_C)?1:0;
+  ledStates[LED_DATA_MINUS]=(!editMode && middleC<DEFAULT_MIDDLE_C)?1:0;
+
   // Just one row each time this is called, to leave them on for a bit
   digitalWrite(ledRows[ledRow>0?(ledRow-1):(LED_NUMROWS-1)],LEDROWOFF);
   for (int c=0; c<LED_NUMCOLS; c++)
@@ -247,12 +327,7 @@ void loopTestCycleLEDs() {
     testLEDsIndex++;
     if (testLEDsIndex>=NUM_TEST_LEDS)
       testLEDsIndex=0;
-    int digitVal=testDigits;
-    setDigit(2,digitVal%10);
-    digitVal/=10;
-    setDigit(1,digitVal%10);
-    digitVal/=10;
-    setDigit(0,digitVal);
+    displayLEDsValue(testDigits);
     testDigits++;
     if (testDigits>999)
       testDigits=0;
@@ -270,7 +345,11 @@ void setup() {
   setupButtons();
   setupLEDs();
   setupTestCycleLEDs();
-  middleC=0x30;
+  middleC=DEFAULT_MIDDLE_C;
+  bank=enBankR1_4;
+  editMode=false;
+  for (int i=0; i<MAX_RVAL_INDEX; i++)
+    rVal[i]=0;
   MIDI.begin();
   Serial.begin(115200);
  }
