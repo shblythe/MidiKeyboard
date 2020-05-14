@@ -337,6 +337,35 @@ void loopTestCycleLEDs() {
 inline void setupTestCycleLEDs() {}
 inline void loopTestCycleLEDs() {}
 #endif
+
+/*
+ * Analog handler
+ */
+#define ANA_PITCHBEND 0
+#define ANA_MODULATION 1
+#define ANA_MASTERVOL 2
+#define ANA_SIZE 3
+int lastAnaValue[ANA_SIZE];
+const int anaPort[ANA_SIZE]={A0,A1,A2};
+
+void setupAnalog()
+{
+  for (int i=0; i<ANA_SIZE; i++)
+    lastAnaValue[i]=-1;
+}
+
+void loopAnalog()
+{
+  for (int i=0; i<ANA_SIZE; i++)
+  {
+    int value=analogRead(anaPort[i])>>3;
+    if (value!=lastAnaValue[i])
+    {
+      displayLEDsValue(value);
+      lastAnaValue[i]=value;
+    }
+  }
+}
 /*
  * Main program
  */
@@ -345,6 +374,7 @@ void setup() {
   setupButtons();
   setupLEDs();
   setupTestCycleLEDs();
+  setupAnalog();
   middleC=DEFAULT_MIDDLE_C;
   bank=enBankR1_4;
   editMode=false;
@@ -359,6 +389,7 @@ void loop() {
   loopButtons();
   loopLEDs();
   loopTestCycleLEDs();
+  loopAnalog();
 #if SERIAL_DEBUG  
   Serial.println();
 #endif  
