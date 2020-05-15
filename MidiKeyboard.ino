@@ -31,6 +31,15 @@ byte rVal[MAX_RVAL_INDEX];
 #define RVAL_BANK_SIZE 4
 
 /*
+ * MIDI messages
+ */
+// Sends master volume in the range 0-127 (MSB only)
+void sendMasterVolume(byte vol)
+{
+  byte msg[6]={0x7f, 0x7f, 0x04, 0x01, vol, 0};
+  MIDI.sendSysEx(6,msg,false);
+}
+/*
  * Keyboard MUX handler
  */
 #define KB_NUMROWS 4
@@ -371,6 +380,8 @@ void loopAnalog()
     {
       displayLEDsValue(value);
       lastAnaValue[i]=value;
+      if (i==ANA_MASTERVOL)
+        sendMasterVolume(value);
     }
   }
 }
