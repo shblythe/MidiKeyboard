@@ -34,11 +34,22 @@ byte rVal[MAX_RVAL_INDEX];
  * MIDI messages
  */
 // Sends master volume in the range 0-127 (MSB only)
+const int channelNum=1;
+
 void sendMasterVolume(byte vol)
 {
   byte msg[6]={0x7f, 0x7f, 0x04, 0x01, vol, 0};
   MIDI.sendSysEx(6,msg,false);
 }
+
+void sendPitchBend(byte bend)
+{
+  int b=bend;
+  b-=64;
+  b*=128;
+  MIDI.sendPitchBend(b,channelNum);
+}
+
 /*
  * Keyboard MUX handler
  */
@@ -95,7 +106,7 @@ void loopKeys()
 #endif
     if (kbSwitchStates[i]!=old_kbSwitchStates[i])
     {
-      MIDI.sendNoteOn(middleC-12+i,(kbSwitchStates[i]==HIGH)?64:0,1);
+      MIDI.sendNoteOn(middleC-12+i,(kbSwitchStates[i]==HIGH)?64:0,channelNum);
       old_kbSwitchStates[i]=kbSwitchStates[i];
     }
   }
@@ -358,10 +369,15 @@ inline void loopTestCycleLEDs() {}
 /*
  * Analog handler
  */
-#define ANA_PITCHBEND 0
-#define ANA_MODULATION 1
+#define ANA_MODULATION 0
+#define ANA_PITCHBEND 1
 #define ANA_MASTERVOL 2
 #define ANA_SIZE 3
+#define PITCHBEND_DEADZONE 4
+#define PITCHBEND_MID 64
+#define PBDZ_MIN (PITCHBEND_MID-PITCHBEND_DEADZONE)
+#define PBDZ_MAX (PITCHBEND_MID+PITCHBEND_DEADZONE)
+
 int lastAnaValue[ANA_SIZE];
 const int anaPort[ANA_SIZE]={A0,A1,A2};
 
@@ -376,12 +392,17 @@ void loopAnalog()
   for (int i=0; i<ANA_SIZE; i++)
   {
     int value=analogRead(anaPort[i])>>3;
+    if (i==ANA_PITCHBEND && value>=PBDZ_MIN && value<=PBDZ_MAX)
+      value=PITCHBEND_MID;
     if (value!=lastAnaValue[i])
     {
-      displayLEDsValue(value);
+      if (i!=ANA_PITCHBEND)
+        displayLEDsValue(value);
       lastAnaValue[i]=value;
       if (i==ANA_MASTERVOL)
         sendMasterVolume(value);
+      if (i==ANA_PITCHBEND)
+        sendPitchBend(value);
     }
   }
 }
