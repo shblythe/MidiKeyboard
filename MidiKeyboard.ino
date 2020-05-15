@@ -14,7 +14,7 @@ MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial,MIDI,midi::DefaultSettings);
 #else
 MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial1,MIDI,midi::DefaultSettings);
 #endif
-#define DEFAULT_MIDDLE_C 0x30
+#define DEFAULT_MIDDLE_C 60
 int middleC;
 
 typedef enum {
@@ -86,7 +86,7 @@ void loopKeys()
 #endif
     if (kbSwitchStates[i]!=old_kbSwitchStates[i])
     {
-      MIDI.sendNoteOn(middleC+i,(kbSwitchStates[i]==HIGH)?64:0,1);
+      MIDI.sendNoteOn(middleC-12+i,(kbSwitchStates[i]==HIGH)?64:0,1);
       old_kbSwitchStates[i]=kbSwitchStates[i];
     }
   }
@@ -197,13 +197,19 @@ void loopButtons()
 #if SERIAL_DEBUG
             Serial.print("DATA-");
 #endif    
-            middleC-=12;
+            // Don't let it get so low that bottom C
+            // is out of midi range
+            if (middleC>=24)
+              middleC-=12;
             break;
           case BTN_DATA_PLUS:
 #if SERIAL_DEBUG          
             Serial.print("DATA+");
-#endif            
-            middleC+=12;
+#endif        
+            // Don't let it get so high that the top C
+            // is out of midi range    
+            if (middleC<=103)
+              middleC+=12;
             break;
           case BTN_EDIT:
             editMode=!editMode;
