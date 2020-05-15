@@ -50,6 +50,11 @@ void sendPitchBend(byte bend)
   MIDI.sendPitchBend(b,channelNum);
 }
 
+void sendModulationWheel(byte mod)
+{
+  MIDI.sendControlChange(midi::ModulationWheel,mod,channelNum);
+}
+
 /*
  * Keyboard MUX handler
  */
@@ -377,6 +382,8 @@ inline void loopTestCycleLEDs() {}
 #define PITCHBEND_MID 64
 #define PBDZ_MIN (PITCHBEND_MID-PITCHBEND_DEADZONE)
 #define PBDZ_MAX (PITCHBEND_MID+PITCHBEND_DEADZONE)
+#define MODULATION_TOP_DEADZONE 1
+#define MOD_MAX (127-MODULATION_TOP_DEADZONE)
 
 int lastAnaValue[ANA_SIZE];
 const int anaPort[ANA_SIZE]={A0,A1,A2};
@@ -394,6 +401,8 @@ void loopAnalog()
     int value=analogRead(anaPort[i])>>3;
     if (i==ANA_PITCHBEND && value>=PBDZ_MIN && value<=PBDZ_MAX)
       value=PITCHBEND_MID;
+    if (i==ANA_MODULATION && value>MOD_MAX)
+      value=MOD_MAX;
     if (value!=lastAnaValue[i])
     {
       if (i!=ANA_PITCHBEND)
@@ -403,6 +412,8 @@ void loopAnalog()
         sendMasterVolume(value);
       if (i==ANA_PITCHBEND)
         sendPitchBend(value);
+      if (i==ANA_MODULATION)
+        sendModulationWheel(value);
     }
   }
 }
