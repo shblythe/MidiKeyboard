@@ -61,6 +61,8 @@ void setupKeys()
 
 void loopKeys()
 {
+  if (editMode)
+    return;
   digitalWrite(kbCols[KB_NUMCOLS-1],LOW);
   for (int c=0; c<KB_NUMCOLS; c++)
   {
