@@ -1,13 +1,6 @@
 #include <MIDI.h>
-
-// These two options are mutually exclusive, since they both use the same serial port!
-#define SERIAL_DEBUG 0
-#define MIDI_HAIRLESS 1
-#if (SERIAL_DEBUG && MIDI_HAIRLESS)
-#error
-#endif 
-
-#define LED_TEST 0
+#include "Config.h"
+#include "Display.h"
 
 #if MIDI_HAIRLESS
 MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial,MIDI,midi::DefaultSettings);
@@ -256,7 +249,7 @@ void loopButtons()
         else if (rVal[index]>0)
           rVal[index]--;
         rVal[index]=updateControl(rControls[index].controlNumber,rVal[index],rControls[index].channel);
-        displayLEDsValue(rVal[index]);
+        Display::it()->displayLEDsValue(rVal[index]);
       }
       // Push-buttons
       else if (btnSwitchStates[i]==HIGH)
@@ -302,119 +295,6 @@ void loopButtons()
     }
   }
 }
-/*
- * LED MUX handler
- */
-#define LED_NUMROWS 4   // anodes
-#define LED_NUMCOLS 8   // cathodes
-#define LEDROWON HIGH
-#define LEDROWOFF LOW
-#define LEDCOLON LOW
-#define LEDCOLOFF HIGH
-const int ledRows[] = { A3, 21, 16, 14 };
-const int ledCols[] = { 17, 15, A7, A5, A4, 20, A10, A6 };
-const byte digitSegs[10][7] = {
-  //        a  b  c  d  e  f  g
-  /* 0 */ { 1, 1, 1, 1, 1, 1, 0 },
-  /* 1 */ { 0, 1, 1, 0, 0, 0, 0 },
-  /* 2 */ { 1, 1, 0, 1, 1, 0, 1 },
-  /* 3 */ { 1, 1, 1, 1, 0, 0, 1 },
-  /* 4 */ { 0, 1, 1, 0, 0, 1, 1 },
-  /* 5 */ { 1, 0, 1, 1, 0, 1, 1 },
-  /* 6 */ { 1, 0, 1, 1, 1, 1, 1 },
-  /* 7 */ { 1, 1, 1, 0, 0, 0, 0 },
-  /* 8 */ { 1, 1, 1, 1, 1, 1, 1 },
-  /* 9 */ { 1, 1, 1, 1, 0, 1, 1 }
-};
-byte ledStates[LED_NUMROWS*LED_NUMCOLS];
-int ledRow;
-// Individual LEDs defined by index of r*LED_NUMCOLS+c
-#define LED_R5R8 4
-#define LED_EDIT 0
-#define LED_R1R4 3
-#define LED_DATA_MINUS 2
-#define LED_DATA_PLUS 1
-#define LED_DIG1_DP 15
-#define LED_DIG2_DP 23
-#define LED_DIG3_DP 31
-
-void setDigit(int index, int value)
-{
-  memcpy(&ledStates[(index+1)*LED_NUMCOLS],digitSegs[value],7);
-}
-
-void displayLEDsValue(int value)
-{
-  setDigit(2,value%10);
-  value/=10;
-  setDigit(1,value%10);
-  value/=10;
-  setDigit(0,value);
-}
-
-void setupLEDs() {
-  for (int i=0; i<LED_NUMROWS; i++)
-  {
-    pinMode(ledRows[i],OUTPUT);
-    digitalWrite(ledRows[i],LEDROWOFF);
-  }
-  for (int i=0; i<LED_NUMCOLS; i++)
-  {
-    pinMode(ledCols[i],OUTPUT);
-    digitalWrite(ledCols[i],LEDCOLOFF);
-  }
-  memset(ledStates,LOW,LED_NUMROWS*LED_NUMCOLS);
-  ledRow=0;
-}
-
-void loopLEDs() {
-  // Update any status LEDs that should have changed state
-  ledStates[LED_R1R4]=(bank==enBankR1_4)?1:0;
-  ledStates[LED_R5R8]=(bank==enBankR5_8)?1:0;
-  ledStates[LED_EDIT]=editMode?1:0;
-  ledStates[LED_DATA_PLUS]=(!editMode && middleC>DEFAULT_MIDDLE_C)?1:0;
-  ledStates[LED_DATA_MINUS]=(!editMode && middleC<DEFAULT_MIDDLE_C)?1:0;
-
-  // Just one row each time this is called, to leave them on for a bit
-  digitalWrite(ledRows[ledRow>0?(ledRow-1):(LED_NUMROWS-1)],LEDROWOFF);
-  for (int c=0; c<LED_NUMCOLS; c++)
-    digitalWrite(ledCols[c],ledStates[ledRow*LED_NUMCOLS+c]?LEDCOLON:LEDCOLOFF);
-  digitalWrite(ledRows[ledRow],LEDROWON);
-  ledRow++;
-  if (ledRow>=LED_NUMROWS)
-    ledRow=0;
-}
-
-#if LED_TEST
-const byte testLEDs[]={LED_EDIT, LED_DATA_PLUS, LED_DATA_MINUS, LED_DIG1_DP, LED_DIG2_DP, LED_DIG3_DP, LED_R1R4, LED_R5R8 };
-#define NUM_TEST_LEDS 8
-unsigned long nextTestLEDsStep;
-int testLEDsIndex;
-int testDigits=0;
-#define TEST_LED_STEP_MS 500
-void setupTestCycleLEDs() {
-  nextTestLEDsStep=0;
-  testLEDsIndex=0;
-}
-void loopTestCycleLEDs() {
-  if (millis()>nextTestLEDsStep)
-  {
-    ledStates[testLEDs[testLEDsIndex>0?(testLEDsIndex-1):(NUM_TEST_LEDS-1)]]=0;
-    ledStates[testLEDs[testLEDsIndex]]=1;
-    nextTestLEDsStep+=TEST_LED_STEP_MS;
-    testLEDsIndex++;
-    if (testLEDsIndex>=NUM_TEST_LEDS)
-      testLEDsIndex=0;
-    displayLEDsValue(testDigits);
-    testDigits++;
-    if (testDigits>999)
-      testDigits=0;
-  }
-}
-#else
-inline void setupTestCycleLEDs() {}
-inline void loopTestCycleLEDs() {}
-#endif
 
 /*
  * Analog handler
@@ -451,7 +331,7 @@ void loopAnalog()
     if (value!=lastAnaValue[i])
     {
       if (i!=ANA_PITCHBEND)
-        displayLEDsValue(value);
+        Display::it()->displayLEDsValue(value);
       lastAnaValue[i]=value;
       if (i==ANA_MASTERVOL)
         sendMasterVolume(value);
@@ -468,8 +348,8 @@ void loopAnalog()
 void setup() {
   setupKeys();
   setupButtons();
-  setupLEDs();
-  setupTestCycleLEDs();
+  Display::it()->setup();
+  Display::it()->setupTest();
   setupAnalog();
   middleC=DEFAULT_MIDDLE_C;
   bank=enBankR1_4;
@@ -484,8 +364,16 @@ void setup() {
 void loop() {
   loopKeys();
   loopButtons();
-  loopLEDs();
-  loopTestCycleLEDs();
+#if !LED_TEST
+  // Update any status LEDs that should have changed state
+  Display::it()->setLED(Display::LED_R1R4,(bank==enBankR1_4)?Display::LED_ON:Display::LED_OFF);
+  Display::it()->setLED(Display::LED_R5R8,(bank==enBankR5_8)?Display::LED_ON:Display::LED_OFF);
+  Display::it()->setLED(Display::LED_EDIT,editMode?Display::LED_ON:Display::LED_OFF);
+  Display::it()->setLED(Display::LED_DATA_PLUS,(!editMode && middleC>DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
+  Display::it()->setLED(Display::LED_DATA_MINUS,(!editMode && middleC<DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
+#endif
+  Display::it()->loop();
+  Display::it()->loopTest();
   loopAnalog();
 #if SERIAL_DEBUG  
   Serial.println();
