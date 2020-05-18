@@ -34,7 +34,7 @@ byte rVal[MAX_RVAL_INDEX];
  * MIDI messages
  */
 // Sends master volume in the range 0-127 (MSB only)
-const int channelNum=1;
+int channelNum;
 
 void sendMasterVolume(byte vol)
 {
@@ -125,7 +125,21 @@ const int btnRows[]={2,7,3,4,5,6};
 const int btnCols[]={A9,A11};
 byte btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
 byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
-
+typedef struct Control
+{
+  byte channel;
+  byte controlNumber;
+};
+Control rControls[]={
+  { 1, 152 },
+  { 1, 153 },
+  { 1, 156 },
+  { 1, 157 },
+  { 1,   7 },
+  { 2,   7 },
+  { 3,   7 },
+  { 4,   7 }
+};
 // Button names numbered by r*BTN_NUMCOLS+c
 // r=0 c=0 => K3 0
 #define BTN_DATA_MINUS 0
@@ -149,6 +163,35 @@ byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
 #define BTN_R48R 11
 #define BTN_MINR  BTN_R15L
 #define BTN_MAXR  BTN_R48R
+
+#define MAX_MIDI_CONTROL 127
+byte updateControl(byte number, byte value, byte channel)
+{
+  byte rval=value;
+  if (number>MAX_MIDI_CONTROL)
+  {
+    switch (number)
+    {
+      case 152: // PROGRAM : Not yet implemented
+        break;
+      case 153: // CHANNEL
+        if (value>16)
+          value=16;
+        if (value<1)
+          value=1;
+        channelNum=value;
+        rval=value;
+        break;
+      case 156: // TEMPO : Not yet implemented
+        break;
+      case 157: // KEYBOARD CURVE : Not yet implemented
+        break;
+    }
+  }
+  else
+    MIDI.sendControlChange(number,value,channel);
+  return rval;
+}
 
 void setupButtons()
 {
@@ -212,8 +255,10 @@ void loopButtons()
         }
         else if (rVal[index]>0)
           rVal[index]--;
+        rVal[index]=updateControl(rControls[index].controlNumber,rVal[index],rControls[index].channel);
         displayLEDsValue(rVal[index]);
       }
+      // Push-buttons
       else if (btnSwitchStates[i]==HIGH)
       {
         switch (i)
@@ -429,6 +474,7 @@ void setup() {
   middleC=DEFAULT_MIDDLE_C;
   bank=enBankR1_4;
   editMode=false;
+  channelNum=1;
   for (int i=0; i<MAX_RVAL_INDEX; i++)
     rVal[i]=0;
   MIDI.begin();
