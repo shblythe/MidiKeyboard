@@ -1,11 +1,9 @@
 #include "Config.h"
 #include "Display.h"
 #include "Control.h"
+#include "AssignableController.h"
 
 #include "MidiInstance.h"
-
-#define DEFAULT_MIDDLE_C 60
-int middleC;
 
 typedef enum {
   enBankR1_4,
@@ -16,34 +14,12 @@ Bank bank;
 bool editMode;
 
 #define MAX_RVAL_INDEX 8
-byte rVal[MAX_RVAL_INDEX];
-#define MAX_RVAL 127
 #define RVAL_BANK_SIZE 4
 
 /*
  * MIDI messages
  */
 // Sends master volume in the range 0-127 (MSB only)
-int channelNum;
-
-void sendMasterVolume(byte vol)
-{
-  byte msg[6]={0x7f, 0x7f, 0x04, 0x01, vol, 0};
-  MidiInstance::it()->MIDI->sendSysEx(6,msg,false);
-}
-
-void sendPitchBend(byte bend)
-{
-  int b=bend;
-  b-=64;
-  b*=128;
-  MidiInstance::it()->MIDI->sendPitchBend(b,channelNum);
-}
-
-void sendModulationWheel(byte mod)
-{
-  MidiInstance::it()->MIDI->sendControlChange(midi::ModulationWheel,mod,channelNum);
-}
 
 /*
  * Keyboard MUX handler
@@ -101,7 +77,7 @@ void loopKeys()
 #endif
     if (kbSwitchStates[i]!=old_kbSwitchStates[i])
     {
-      MidiInstance::it()->MIDI->sendNoteOn(middleC-12+i,(kbSwitchStates[i]==HIGH)?64:0,channelNum);
+      MidiInstance::it()->MIDI->sendNoteOn(Controllers::it()->getMiddleC()-12+i,(kbSwitchStates[i]==HIGH)?64:0,Controllers::it()->getChannel());
       old_kbSwitchStates[i]=kbSwitchStates[i];
     }
   }
@@ -115,21 +91,6 @@ const int btnRows[]={2,7,3,4,5,6};
 const int btnCols[]={A9,A11};
 byte btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
 byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
-typedef struct SControl
-{
-  byte channel;
-  byte controlNumber;
-};
-SControl rControls[]={
-  { 1, 152 },
-  { 1, 153 },
-  { 1, 156 },
-  { 1, 157 },
-  { 1,   7 },
-  { 2,   7 },
-  { 3,   7 },
-  { 4,   7 }
-};
 // Button names numbered by r*BTN_NUMCOLS+c
 // r=0 c=0 => K3 0
 #define BTN_DATA_MINUS 0
@@ -153,34 +114,6 @@ SControl rControls[]={
 #define BTN_R48R 11
 #define BTN_MINR  BTN_R15L
 #define BTN_MAXR  BTN_R48R
-
-byte updateControl(byte number, byte value, byte channel)
-{
-  byte rval=value;
-  if (number>MAX_MIDI_CONTROL)
-  {
-    switch (number)
-    {
-      case 152: // PROGRAM : Not yet implemented
-        break;
-      case 153: // CHANNEL
-        if (value>16)
-          value=16;
-        if (value<1)
-          value=1;
-        channelNum=value;
-        rval=value;
-        break;
-      case 156: // TEMPO : Not yet implemented
-        break;
-      case 157: // KEYBOARD CURVE : Not yet implemented
-        break;
-    }
-  }
-  else
-    MidiInstance::it()->MIDI->sendControlChange(number,value,channel);
-  return rval;
-}
 
 void setupButtons()
 {
@@ -220,6 +153,7 @@ void loopButtons()
       {
         int index=(i-BTN_MINR)/2;
         bool increment=true;
+        char value;
         if (bank==enBankR5_8)
           index+=RVAL_BANK_SIZE;
         // The rotary encoder moves through the following states for the two switches:
@@ -238,14 +172,10 @@ void loopButtons()
             increment=false;
         }
         if (increment)
-        {
-          if (rVal[index]<MAX_RVAL)
-            rVal[index]++;
-        }
-        else if (rVal[index]>0)
-          rVal[index]--;
-        rVal[index]=updateControl(rControls[index].controlNumber,rVal[index],rControls[index].channel);
-        Display::it()->displayLEDsValue(rVal[index]);
+          value=AssignableControllers::it()->getController(AssignableControllers::R1+index)->increment();
+        else
+          value=AssignableControllers::it()->getController(AssignableControllers::R1+index)->decrement();
+        Display::it()->displayLEDsValue(value);
       }
       // Push-buttons
       else if (btnSwitchStates[i]==HIGH)
@@ -256,19 +186,13 @@ void loopButtons()
 #if SERIAL_DEBUG
             Serial.print("DATA-");
 #endif    
-            // Don't let it get so low that bottom C
-            // is out of midi range
-            if (middleC>=24)
-              middleC-=12;
+            AssignableControllers::it()->getController(AssignableControllers::DATA)->decrement();
             break;
           case BTN_DATA_PLUS:
 #if SERIAL_DEBUG          
             Serial.print("DATA+");
 #endif        
-            // Don't let it get so high that the top C
-            // is out of midi range    
-            if (middleC<=103)
-              middleC+=12;
+            AssignableControllers::it()->getController(AssignableControllers::DATA)->increment();
             break;
           case BTN_EDIT:
             editMode=!editMode;
@@ -295,16 +219,16 @@ void loopButtons()
 /*
  * Analog handler
  */
-#define ANA_MODULATION 0
-#define ANA_PITCHBEND 1
-#define ANA_MASTERVOL 2
+#define ANA_WHEEL2 0
+#define ANA_WHEEL1 1
+#define ANA_SLIDER 2
 #define ANA_SIZE 3
-#define PITCHBEND_DEADZONE 4
-#define PITCHBEND_MID 64
-#define PBDZ_MIN (PITCHBEND_MID-PITCHBEND_DEADZONE)
-#define PBDZ_MAX (PITCHBEND_MID+PITCHBEND_DEADZONE)
-#define MODULATION_TOP_DEADZONE 1
-#define MOD_MAX (127-MODULATION_TOP_DEADZONE)
+#define WHEEL1_DEADZONE 4
+#define WHEEL1_MID 64
+#define W1DZ_MIN (WHEEL1_MID-WHEEL1_DEADZONE)
+#define W1DZ_MAX (WHEEL1_MID+WHEEL1_DEADZONE)
+#define W2_TOP_DEADZONE 1
+#define W2_MAX (127-W2_TOP_DEADZONE)
 
 int lastAnaValue[ANA_SIZE];
 const int anaPort[ANA_SIZE]={A0,A1,A2};
@@ -320,21 +244,21 @@ void loopAnalog()
   for (int i=0; i<ANA_SIZE; i++)
   {
     int value=analogRead(anaPort[i])>>3;
-    if (i==ANA_PITCHBEND && value>=PBDZ_MIN && value<=PBDZ_MAX)
-      value=PITCHBEND_MID;
-    if (i==ANA_MODULATION && value>MOD_MAX)
-      value=MOD_MAX;
+    if (i==ANA_WHEEL1 && value>=W1DZ_MIN && value<=W1DZ_MAX)
+      value=WHEEL1_MID;
+    if (i==ANA_WHEEL2 && value>W2_MAX)
+      value=W2_MAX;
     if (value!=lastAnaValue[i])
     {
-      if (i!=ANA_PITCHBEND)
+      if (i!=ANA_WHEEL1)
         Display::it()->displayLEDsValue(value);
       lastAnaValue[i]=value;
-      if (i==ANA_MASTERVOL)
-        sendMasterVolume(value);
-      if (i==ANA_PITCHBEND)
-        sendPitchBend(value);
-      if (i==ANA_MODULATION)
-        sendModulationWheel(value);
+      if (i==ANA_SLIDER)
+        AssignableControllers::it()->getController(AssignableControllers::SLIDER)->setValue(value);
+      if (i==ANA_WHEEL2)
+        AssignableControllers::it()->getController(AssignableControllers::WHEEL2)->setValue(value);
+      if (i==ANA_WHEEL1)
+        AssignableControllers::it()->getController(AssignableControllers::WHEEL1)->setValue(value);
     }
   }
 }
@@ -347,12 +271,10 @@ void setup() {
   Display::it()->setup();
   Display::it()->setupTest();
   setupAnalog();
-  middleC=DEFAULT_MIDDLE_C;
   bank=enBankR1_4;
   editMode=false;
-  channelNum=1;
-  for (int i=0; i<MAX_RVAL_INDEX; i++)
-    rVal[i]=0;
+  Controllers::it()->setup();
+  AssignableControllers::it()->setup();
   MidiInstance::it()->MIDI->begin();
   Serial.begin(115200);
  }
@@ -365,8 +287,8 @@ void loop() {
   Display::it()->setLED(Display::LED_R1R4,(bank==enBankR1_4)?Display::LED_ON:Display::LED_OFF);
   Display::it()->setLED(Display::LED_R5R8,(bank==enBankR5_8)?Display::LED_ON:Display::LED_OFF);
   Display::it()->setLED(Display::LED_EDIT,editMode?Display::LED_ON:Display::LED_OFF);
-  Display::it()->setLED(Display::LED_DATA_PLUS,(!editMode && middleC>DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
-  Display::it()->setLED(Display::LED_DATA_MINUS,(!editMode && middleC<DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
+  Display::it()->setLED(Display::LED_DATA_PLUS,(!editMode && Controllers::it()->getMiddleC()>DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
+  Display::it()->setLED(Display::LED_DATA_MINUS,(!editMode && Controllers::it()->getMiddleC()<DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
 #endif
   Display::it()->loop();
   Display::it()->loopTest();

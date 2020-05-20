@@ -9,5 +9,6 @@
 #endif 
 
 #define LED_TEST 0
+#define DEFAULT_MIDDLE_C 60
 
 #endif
