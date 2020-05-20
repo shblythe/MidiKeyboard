@@ -1,12 +1,9 @@
-#include <MIDI.h>
 #include "Config.h"
 #include "Display.h"
+#include "Control.h"
 
-#if MIDI_HAIRLESS
-MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial,MIDI,midi::DefaultSettings);
-#else
-MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial,Serial1,MIDI,midi::DefaultSettings);
-#endif
+#include "MidiInstance.h"
+
 #define DEFAULT_MIDDLE_C 60
 int middleC;
 
@@ -32,7 +29,7 @@ int channelNum;
 void sendMasterVolume(byte vol)
 {
   byte msg[6]={0x7f, 0x7f, 0x04, 0x01, vol, 0};
-  MIDI.sendSysEx(6,msg,false);
+  MidiInstance::it()->MIDI->sendSysEx(6,msg,false);
 }
 
 void sendPitchBend(byte bend)
@@ -40,12 +37,12 @@ void sendPitchBend(byte bend)
   int b=bend;
   b-=64;
   b*=128;
-  MIDI.sendPitchBend(b,channelNum);
+  MidiInstance::it()->MIDI->sendPitchBend(b,channelNum);
 }
 
 void sendModulationWheel(byte mod)
 {
-  MIDI.sendControlChange(midi::ModulationWheel,mod,channelNum);
+  MidiInstance::it()->MIDI->sendControlChange(midi::ModulationWheel,mod,channelNum);
 }
 
 /*
@@ -104,7 +101,7 @@ void loopKeys()
 #endif
     if (kbSwitchStates[i]!=old_kbSwitchStates[i])
     {
-      MIDI.sendNoteOn(middleC-12+i,(kbSwitchStates[i]==HIGH)?64:0,channelNum);
+      MidiInstance::it()->MIDI->sendNoteOn(middleC-12+i,(kbSwitchStates[i]==HIGH)?64:0,channelNum);
       old_kbSwitchStates[i]=kbSwitchStates[i];
     }
   }
@@ -118,12 +115,12 @@ const int btnRows[]={2,7,3,4,5,6};
 const int btnCols[]={A9,A11};
 byte btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
 byte old_btnSwitchStates[BTN_NUMROWS*BTN_NUMCOLS];
-typedef struct Control
+typedef struct SControl
 {
   byte channel;
   byte controlNumber;
 };
-Control rControls[]={
+SControl rControls[]={
   { 1, 152 },
   { 1, 153 },
   { 1, 156 },
@@ -157,7 +154,6 @@ Control rControls[]={
 #define BTN_MINR  BTN_R15L
 #define BTN_MAXR  BTN_R48R
 
-#define MAX_MIDI_CONTROL 127
 byte updateControl(byte number, byte value, byte channel)
 {
   byte rval=value;
@@ -182,7 +178,7 @@ byte updateControl(byte number, byte value, byte channel)
     }
   }
   else
-    MIDI.sendControlChange(number,value,channel);
+    MidiInstance::it()->MIDI->sendControlChange(number,value,channel);
   return rval;
 }
 
@@ -357,7 +353,7 @@ void setup() {
   channelNum=1;
   for (int i=0; i<MAX_RVAL_INDEX; i++)
     rVal[i]=0;
-  MIDI.begin();
+  MidiInstance::it()->MIDI->begin();
   Serial.begin(115200);
  }
 
