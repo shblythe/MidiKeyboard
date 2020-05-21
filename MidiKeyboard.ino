@@ -223,12 +223,12 @@ void loopButtons()
 #define ANA_WHEEL1 1
 #define ANA_SLIDER 2
 #define ANA_SIZE 3
-#define WHEEL1_DEADZONE 4
-#define WHEEL1_MID 64
+#define WHEEL1_DEADZONE 32
+#define WHEEL1_MID 512
 #define W1DZ_MIN (WHEEL1_MID-WHEEL1_DEADZONE)
 #define W1DZ_MAX (WHEEL1_MID+WHEEL1_DEADZONE)
-#define W2_TOP_DEADZONE 1
-#define W2_MAX (127-W2_TOP_DEADZONE)
+#define W2_TOP_DEADZONE 8
+#define W2_MAX (1024-W2_TOP_DEADZONE)
 
 int lastAnaValue[ANA_SIZE];
 const int anaPort[ANA_SIZE]={A0,A1,A2};
@@ -243,22 +243,22 @@ void loopAnalog()
 {
   for (int i=0; i<ANA_SIZE; i++)
   {
-    int value=analogRead(anaPort[i])>>3;
+    int value=analogRead(anaPort[i]);
     if (i==ANA_WHEEL1 && value>=W1DZ_MIN && value<=W1DZ_MAX)
       value=WHEEL1_MID;
     if (i==ANA_WHEEL2 && value>W2_MAX)
       value=W2_MAX;
     if (value!=lastAnaValue[i])
     {
-      if (i!=ANA_WHEEL1)
-        Display::it()->displayLEDsValue(value);
       lastAnaValue[i]=value;
       if (i==ANA_SLIDER)
-        AssignableControllers::it()->getController(AssignableControllers::SLIDER)->setValue(value);
+        value=AssignableControllers::it()->getController(AssignableControllers::SLIDER)->setValue(value,0,1023);
       if (i==ANA_WHEEL2)
-        AssignableControllers::it()->getController(AssignableControllers::WHEEL2)->setValue(value);
+        value=AssignableControllers::it()->getController(AssignableControllers::WHEEL2)->setValue(value,0,W2_MAX);
       if (i==ANA_WHEEL1)
-        AssignableControllers::it()->getController(AssignableControllers::WHEEL1)->setValue(value);
+        value=AssignableControllers::it()->getController(AssignableControllers::WHEEL1)->setValue(value,0,1023);
+      if (i!=ANA_WHEEL1)
+        Display::it()->displayLEDsValue(value);
     }
   }
 }

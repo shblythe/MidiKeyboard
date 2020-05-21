@@ -26,6 +26,8 @@ public:
     mValue=defaultValue;
   }
 
+  // This version of setValue chops at min/max, therefore assuming the caller already
+  // knows the min/max range, or is happy to be corrected.
   byte setValue(byte channel, char value)
   {
     if (value==-128 || value>mMaximum)
@@ -35,6 +37,17 @@ public:
     mValue=setControlValue(channel,value);
     return mValue;
   }
+  // This version allows the caller to pass the range of the source of the value, e.g.
+  // it could be an analog input in the range 0-1023.  From that, we will spread the range
+  // of our value, e.g. so that with a value range of 0-127, it will be 127 when the passed
+  // input is 1023
+  byte setValue(byte channel, int srcValue, int srcMin, int srcMax)
+  {
+    long value=(long)srcValue*(mMaximum-mMinimum+1);
+    value/=(srcMax-srcMin+1);
+    return setValue(channel,value);
+  }
+
   char getValue() { return mValue; }
 };
 

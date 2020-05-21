@@ -37,6 +37,7 @@ public:
   }
   void setChannel(byte channel) { mChannel=channel; }
   char setValue(char value) { return mControl->setValue(getChannel(),value); }
+  char setValue(int srcValue, int srcMin, int srcMax) { return mControl->setValue(getChannel(),srcValue,srcMin,srcMax);}
   char increment() { return mControl->setValue(getChannel(),mControl->getValue()+1); }
   char decrement() { return mControl->setValue(getChannel(),mControl->getValue()-1); }
 };
