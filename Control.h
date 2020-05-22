@@ -1,8 +1,10 @@
 #include <Arduino.h>
 #include "MidiInstance.h"
 #include "Config.h"
+#include "Display.h"
 
 #define MAX_MIDI_CONTROL 127
+#define MAX_CHANNEL 16
 
 #pragma once
 
@@ -13,8 +15,10 @@ protected:
   char mMinimum; // minimum value
   char mMaximum; // maximum value
   char mDefaultValue;
-  char mValue;
+  char mValue[MAX_CHANNEL];
+  char mLastValue[MAX_CHANNEL];
   virtual char setControlValue(byte channel, char value)=0;
+  virtual void displayValue(byte channel) {};
 
 public:
   Control(byte number, char defaultValue, char maximum=127, char minimum=0)
@@ -23,7 +27,8 @@ public:
     mMinimum=minimum;
     mMaximum=maximum;
     mDefaultValue=defaultValue;
-    mValue=defaultValue;
+    for (int i=0; i<MAX_CHANNEL; i++)
+      mLastValue[i]=mValue[i]=defaultValue;
   }
 
   // This version of setValue chops at min/max, therefore assuming the caller already
@@ -34,8 +39,13 @@ public:
       value=mMaximum;
     else if (value<mMinimum)
       value=mMinimum;
-    mValue=setControlValue(channel,value);
-    return mValue;
+    mValue[channel]=setControlValue(channel,value);
+    if (mValue[channel]!=mLastValue[channel])
+    {
+      displayValue(channel);
+      mLastValue[channel]=mValue[channel];
+    }
+    return mValue[channel];
   }
   // This version allows the caller to pass the range of the source of the value, e.g.
   // it could be an analog input in the range 0-1023.  From that, we will spread the range
@@ -48,12 +58,26 @@ public:
     return setValue(channel,value);
   }
 
-  char getValue() { return mValue; }
+  char getValue(byte channel) { return mValue[channel]; }
 };
 
-class MidiControl : public Control
+class DisplayedControl : public Control
 {
-  using Control::Control;
+private:
+  byte mNumDigits;
+public:
+  DisplayedControl(byte number, char defaultValue, char maximum=127, char minimum=0, byte numDigits=3)
+    :Control(number, defaultValue, maximum, minimum),mNumDigits(numDigits) {}
+protected:
+  virtual void displayValue(byte channel)
+  {
+    Display::it()->displayLEDsValue(mValue[channel],mNumDigits);
+  }
+};
+
+class MidiControl : public DisplayedControl
+{
+  using DisplayedControl::DisplayedControl;
 protected:
   virtual char setControlValue(byte channel, char value)
   {
@@ -62,9 +86,9 @@ protected:
   }
 };
 
-class MasterVolumeControl : public Control
+class MasterVolumeControl : public DisplayedControl
 {
-  using Control::Control;
+  using DisplayedControl::DisplayedControl;
 protected:
   virtual char setControlValue(byte channel, char value)
   {
@@ -88,9 +112,9 @@ protected:
   }
 };
 
-class ProgramControl:public Control
+class ProgramControl:public DisplayedControl
 {
-  using Control::Control;
+  using DisplayedControl::DisplayedControl;
 protected:
   virtual char setControlValue(byte channel, char value)
   {
@@ -100,9 +124,9 @@ protected:
 };
 
 // Just stores a value, doesn't send anything anywhere
-class ValueControl : public Control
+class ValueControl : public DisplayedControl
 {
-  using Control::Control;
+  using DisplayedControl::DisplayedControl;
 protected:
   virtual char setControlValue(byte channel, char value) {return value;}
 };
@@ -123,19 +147,19 @@ public:
     return mControls[index];
   }
   
-  char getControlValue(int index)
+  char getControlValue(int channel, int index)
   {
-    return mControls[index]->getValue();
+    return mControls[index]->getValue(channel);
   }
 
   // Convenience functions
   char getChannel()
   {
-    return mControls[CONTROL_CHANNEL]->getValue();
+    return mControls[CONTROL_CHANNEL]->getValue(0);
   }
 
   char getMiddleC()
   {
-    return mControls[CONTROL_OCTAVE]->getValue()*12+DEFAULT_MIDDLE_C;
+    return mControls[CONTROL_OCTAVE]->getValue(0)*12+DEFAULT_MIDDLE_C;
   }
 };

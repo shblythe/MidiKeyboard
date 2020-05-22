@@ -15,8 +15,8 @@ void AssignableControllers::setup()
   mControllers[R2]    =new AssignableController(R2,     0,0,159,153);
   mControllers[R3]    =new AssignableController(R3,     0,0,159,156);
   mControllers[R4]    =new AssignableController(R4,     0,0,159,157);
-  mControllers[R5]    =new AssignableController(R5,     1,0,159,7);
-  mControllers[R6]    =new AssignableController(R6,     2,0,159,7);
-  mControllers[R7]    =new AssignableController(R7,     3,0,159,7);
-  mControllers[R8]    =new AssignableController(R8,     4,0,159,7);
+  mControllers[R5]    =new AssignableController(R5,     0,0,159,7);
+  mControllers[R6]    =new AssignableController(R6,     1,0,159,7);
+  mControllers[R7]    =new AssignableController(R7,     2,0,159,7);
+  mControllers[R8]    =new AssignableController(R8,     3,0,159,7);
 }

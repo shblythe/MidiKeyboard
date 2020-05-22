@@ -39,7 +39,7 @@ public:
   static const byte LED_OFF=0;
 
   static Display* it() { return &instance; }
-  void displayLEDsValue(int value);
+  void displayLEDsValue(int value, int digits=3);
   void setLED(byte address, byte state);
   void setup();
   void loop();

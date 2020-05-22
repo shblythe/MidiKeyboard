@@ -11,7 +11,6 @@ private:
   byte mDefaultControl;
   byte mDefaultChannel;
   Control* mControl;
-  byte getChannel() { return mChannel!=0 ? mChannel : Controllers::it()->getChannel(); }
 public:
   AssignableController(byte number, byte defaultChannel, byte minParameter, byte maxParameter, byte defaultControl)
   {
@@ -36,10 +35,10 @@ public:
     return true;
   }
   void setChannel(byte channel) { mChannel=channel; }
-  char setValue(char value) { return mControl->setValue(getChannel(),value); }
-  char setValue(int srcValue, int srcMin, int srcMax) { return mControl->setValue(getChannel(),srcValue,srcMin,srcMax);}
-  char increment() { return mControl->setValue(getChannel(),mControl->getValue()+1); }
-  char decrement() { return mControl->setValue(getChannel(),mControl->getValue()-1); }
+  char setValue(char value) { return mControl->setValue(mChannel,value); }
+  char setValue(int srcValue, int srcMin, int srcMax) { return mControl->setValue(mChannel,srcValue,srcMin,srcMax);}
+  char increment() { return mControl->setValue(mChannel,mControl->getValue(mChannel)+1); }
+  char decrement() { return mControl->setValue(mChannel,mControl->getValue(mChannel)-1); }
 };
 
 class AssignableControllers

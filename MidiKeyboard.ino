@@ -175,7 +175,6 @@ void loopButtons()
           value=AssignableControllers::it()->getController(AssignableControllers::R1+index)->increment();
         else
           value=AssignableControllers::it()->getController(AssignableControllers::R1+index)->decrement();
-        Display::it()->displayLEDsValue(value);
       }
       // Push-buttons
       else if (btnSwitchStates[i]==HIGH)
@@ -257,8 +256,6 @@ void loopAnalog()
         value=AssignableControllers::it()->getController(AssignableControllers::WHEEL2)->setValue(value,0,W2_MAX);
       if (i==ANA_WHEEL1)
         value=AssignableControllers::it()->getController(AssignableControllers::WHEEL1)->setValue(value,0,1023);
-      if (i!=ANA_WHEEL1)
-        Display::it()->displayLEDsValue(value);
     }
   }
 }

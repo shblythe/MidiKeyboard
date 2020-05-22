@@ -1,8 +1,8 @@
 #include "Display.h"
 
-static const int Display::ledRows[4] = { A3, 21, 16, 14 };
-static const int Display::ledCols[8] = { 17, 15, A7, A5, A4, 20, A10, A6 };
-static const byte Display::digitSegs[10][7] = {
+const int Display::ledRows[4] = { A3, 21, 16, 14 };
+const int Display::ledCols[8] = { 17, 15, A7, A5, A4, 20, A10, A6 };
+const byte Display::digitSegs[12][7] = {
   //        a  b  c  d  e  f  g
   /* 0 */ { 1, 1, 1, 1, 1, 1, 0 },
   /* 1 */ { 0, 1, 1, 0, 0, 0, 0 },
@@ -13,22 +13,28 @@ static const byte Display::digitSegs[10][7] = {
   /* 6 */ { 1, 0, 1, 1, 1, 1, 1 },
   /* 7 */ { 1, 1, 1, 0, 0, 0, 0 },
   /* 8 */ { 1, 1, 1, 1, 1, 1, 1 },
-  /* 9 */ { 1, 1, 1, 1, 0, 1, 1 }
+  /* 9 */ { 1, 1, 1, 1, 0, 1, 1 },
+  /* 10*/ { 0, 0, 0, 0, 0, 0, 1 }, // for minus sign
+  /* 11*/ { 0, 0, 0, 0, 0, 0, 0 }  // for space
 };
-static Display Display::instance;
+#define DIGIT_MINUS 10
+#define DIGIT_SPACE 11
+Display Display::instance;
 
 void Display::setDigit(int index, int value)
 {
   memcpy(&ledStates[(index+1)*LED_NUMCOLS],digitSegs[value],7);
 }
 
-void Display::displayLEDsValue(int value)
+void Display::displayLEDsValue(int value, int digits=3)
 {
+  bool negative=value<0;
+  value=abs(value);
   setDigit(2,value%10);
   value/=10;
-  setDigit(1,value%10);
+  setDigit(1,digits>1?value%10:DIGIT_SPACE);
   value/=10;
-  setDigit(0,value);
+  setDigit(0,negative?DIGIT_MINUS:(digits>2?value:DIGIT_SPACE));
 }
 
 void Display::setLED(byte address, byte state)
