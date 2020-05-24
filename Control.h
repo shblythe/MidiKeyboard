@@ -39,11 +39,14 @@ public:
       value=mMaximum;
     else if (value<mMinimum)
       value=mMinimum;
-    mValue[channel]=setControlValue(channel,value);
-    if (mValue[channel]!=mLastValue[channel])
+    if (value!=mLastValue[channel])
     {
-      displayValue(channel);
-      mLastValue[channel]=mValue[channel];
+      mValue[channel]=setControlValue(channel,value);
+      if (mValue[channel]!=mLastValue[channel])
+      {
+        displayValue(channel);
+        mLastValue[channel]=mValue[channel];
+      }
     }
     return mValue[channel];
   }
