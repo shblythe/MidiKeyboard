@@ -2,5 +2,6 @@
     "board": "arduino:avr:mega",
     "configuration": "cpu=atmega2560",
     "port": "COM5",
-    "sketch": "MidiKeyboard.ino"
+    "sketch": "MidiKeyboard.ino",
+    "programmer": "AVR ISP"
 }
