@@ -15,7 +15,6 @@ protected:
   char mMinimum; // minimum value
   char mMaximum; // maximum value
   char mDefaultValue;
-  char mValue[MAX_CHANNEL];
   char mLastValue[MAX_CHANNEL];
   virtual char setControlValue(byte channel, char value)=0;
   virtual void displayValue(byte channel) {};
@@ -28,12 +27,12 @@ public:
     mMaximum=maximum;
     mDefaultValue=defaultValue;
     for (int i=0; i<MAX_CHANNEL; i++)
-      mLastValue[i]=mValue[i]=defaultValue;
+      mLastValue[i]=defaultValue;
   }
 
   // This version of setValue chops at min/max, therefore assuming the caller already
   // knows the min/max range, or is happy to be corrected.
-  byte setValue(byte channel, char value)
+  virtual byte setValue(byte channel, char value)
   {
     if (value==-128 || value>mMaximum)
       value=mMaximum;
@@ -41,14 +40,14 @@ public:
       value=mMinimum;
     if (value!=mLastValue[channel])
     {
-      mValue[channel]=setControlValue(channel,value);
-      if (mValue[channel]!=mLastValue[channel])
+      value=setControlValue(channel,value);
+      if (value!=mLastValue[channel])
       {
+        mLastValue[channel]=value;
         displayValue(channel);
-        mLastValue[channel]=mValue[channel];
       }
     }
-    return mValue[channel];
+    return value;
   }
   // This version allows the caller to pass the range of the source of the value, e.g.
   // it could be an analog input in the range 0-1023.  From that, we will spread the range
@@ -61,7 +60,7 @@ public:
     return setValue(channel,value);
   }
 
-  char getValue(byte channel) { return mValue[channel]; }
+  virtual char getValue(byte channel) { return mLastValue[channel]; }
 };
 
 class DisplayedControl : public Control
@@ -74,7 +73,7 @@ public:
 protected:
   virtual void displayValue(byte channel)
   {
-    Display::it()->displayLEDsValue(mValue[channel],mNumDigits);
+    Display::it()->displayLEDsValue(mLastValue[channel],mNumDigits);
   }
 };
 
@@ -126,22 +125,93 @@ protected:
   }
 };
 
+class MidiRPNControl:public DisplayedControl
+{
+  using DisplayedControl::DisplayedControl;
+protected:
+  virtual char setControlValue(byte channel, char value)
+  {
+    MidiInstance::it()->MIDI->beginRpn(mNumber,channel);
+    MidiInstance::it()->MIDI->sendRpnValue(value,channel);
+    MidiInstance::it()->MIDI->endRpn(channel);
+    return value;
+  }
+};
+
+class MidiNRPNControl:public DisplayedControl
+{
+  int mNrpnNumber;
+
+protected:
+  virtual char setControlValue(byte channel, char value)
+  {
+    MidiInstance::it()->MIDI->beginNrpn(mNrpnNumber,channel);
+    MidiInstance::it()->MIDI->sendNrpnValue(value,channel);
+    MidiInstance::it()->MIDI->endNrpn(channel);
+  }
+
+public:
+  MidiNRPNControl::MidiNRPNControl(int number, char defaultValue, char maximum=127, char minimum=0, byte numDigits=3)
+    :DisplayedControl(0,defaultValue,maximum,minimum,numDigits)
+  {
+    mNrpnNumber=number;
+  }
+};
+
 // Just stores a value, doesn't send anything anywhere
 class ValueControl : public DisplayedControl
 {
   using DisplayedControl::DisplayedControl;
 protected:
   virtual char setControlValue(byte channel, char value) {return value;}
+public:
+  // Just use channel 0 for all operations, since these values don't relate to channels
+  virtual byte setValue(byte channel, char value)
+  {
+    return DisplayedControl::setValue(0,value);
+  }
+  virtual char getValue(byte channel) { return DisplayedControl::getValue(0); }
 };
 
 class Controllers
 {
 private:
-  Control* mControls[159];
+  Control* mControls[160];
   static Controllers instance;
   static const char Controllers::MidiControlDefaultValues[];
 public:
-  enum { CONTROL_PITCH_BEND=146, CONTROL_MASTER_VOLUME, CONTROL_PROGRAM=152, CONTROL_CHANNEL, CONTROL_OCTAVE, CONTROL_TEMPO=156, CONTROL_KEYBOARD_CURVE=157 };
+  enum {  CONTROL_RPN_PITCH_BEND_SENSITIVITY=128,
+          CONTROL_RPN_CHANNEL_FINE_TUNING,
+          CONTROL_RPN_CHANNEL_COARSE_TUNING,
+          CONTROL_RPN_MODULATION_DEPTH_RANGE,
+          CONTROL_NRPN_VIBRATO_RATE,
+          CONTROL_NRPN_VIBRATO_DEPTH,
+          CONTROL_NRPN_VIBRATO_DELAY,
+          CONTROL_NRPN_FILTER_CUTOFF_FREQUENCY,
+          CONTROL_NRPN_FILTER_RESONANCE,
+          CONTROL_NRPN_EQ_LOW_GAIN,
+          CONTROL_NRPN_EQ_HIGH_GAIN,
+          CONTROL_NRPN_EQ_LOW_FREQUENCY,
+          CONTROL_NRPN_EQ_HIGH_FREQUENCY,
+          CONTROL_NRPN_EG_ATTACK_TIME,
+          CONTROL_NRPN_EG_DECAY_TIME,
+          CONTROL_NRPN_EG_RELEASE_TIME,
+          CONTROL_POLYPHONIC_KEY_PRESSURE,
+          CONTROL_AFTER_TOUCH,
+          CONTROL_PITCH_BEND,
+          CONTROL_MASTER_VOLUME,
+          CONTROL_START_MTC,
+          CONTROL_CONTINUE_MTC,
+          CONTROL_STOP_MTC,
+          CONTROL_RESET_MTC,
+          CONTROL_PROGRAM,
+          CONTROL_CHANNEL,
+          CONTROL_OCTAVE,
+          CONTROL_TRANSPOSE,
+          CONTROL_TEMPO,
+          CONTROL_KEYBOARD_CURVE,
+          CONTROL_PEDAL_A_CURVE,
+          CONTROL_PEDAL_B_CURVE };
 
   static Controllers* it() { return &instance; }
   void setup();
@@ -163,6 +233,6 @@ public:
 
   char getMiddleC()
   {
-    return mControls[CONTROL_OCTAVE]->getValue(0)*12+DEFAULT_MIDDLE_C;
+    return mControls[CONTROL_OCTAVE]->getValue(0)*12+mControls[CONTROL_TRANSPOSE]->getValue(0)+DEFAULT_MIDDLE_C;
   }
 };

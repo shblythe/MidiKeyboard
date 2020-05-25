@@ -259,21 +259,60 @@ void loopAnalog()
     }
   }
 }
+
+#if SERIAL_DEBUG
+#ifdef __arm__
+// should use uinstd.h to define sbrk but Due causes a conflict
+extern "C" char* sbrk(int incr);
+#else  // __ARM__
+extern char *__brkval;
+#endif  // __arm__
+
+int freeMemory() {
+  char top;
+#ifdef __arm__
+  return &top - reinterpret_cast<char*>(sbrk(0));
+#elif defined(CORE_TEENSY) || (ARDUINO > 103 && ARDUINO != 151)
+  return &top - __brkval;
+#else  // __arm__
+  return __brkval ? &top - __brkval : &top - __malloc_heap_start;
+#endif  // __arm__
+}
+
+#define MEM_DEBUG(tag) Serial.print(tag);Serial.println(freeMemory());Serial.flush();
+#else
+#define MEM_DEBUG(tag)
+#endif
+
 /*
  * Main program
  */
 void setup() {
+#if SERIAL_DEBUG
+  Serial.begin(115200);
+#endif
+  MEM_DEBUG("/0:");
   setupKeys();
+  MEM_DEBUG("/1:");
   setupButtons();
+  MEM_DEBUG("/2:");
   Display::it()->setup();
+  MEM_DEBUG("/3:");
   Display::it()->setupTest();
+  MEM_DEBUG("/4:");
   setupAnalog();
   bank=enBankR1_4;
   editMode=false;
+  MEM_DEBUG("/5:");
   Controllers::it()->setup();
+  MEM_DEBUG("/6:");
   AssignableControllers::it()->setup();
+  MEM_DEBUG("/7:");
   MidiInstance::it()->MIDI->begin();
+  MEM_DEBUG("/8:");
+#if SERIAL_DEBUG==0
   Serial.begin(115200);
+#endif
  }
 
 void loop() {
