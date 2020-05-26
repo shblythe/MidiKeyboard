@@ -17,13 +17,83 @@ const byte Display::digitSegs[12][7] = {
   /* 10*/ { 0, 0, 0, 0, 0, 0, 1 }, // for minus sign
   /* 11*/ { 0, 0, 0, 0, 0, 0, 0 }  // for space
 };
+const byte Display::msgSegs[][LED_NUMDIGITS][7]={
+  //  MSG_CHOOSE  - CHO
+  {
+    { 1, 0, 0, 1, 1, 1, 0 },  // C
+    { 0, 1, 1, 0, 1, 1, 1 },  // H
+    { 1, 1, 1, 1, 1, 1, 0 },  // O
+  },
+  //  MSG_ON      - _On
+  {
+    { 0, 0, 0, 0, 0, 0, 0 },  // space
+    { 1, 1, 1, 1, 1, 1, 0 },  // O
+    { 1, 1, 1, 0, 1, 1, 0 },  // n
+  },
+  //  MSG_OFF     - OFF
+  {
+    { 1, 1, 1, 1, 1, 1, 0 },  // O
+    { 1, 0, 0, 0, 1, 1, 1 },  // F
+    { 1, 0, 0, 0, 1, 1, 1 },  // F
+  },
+  //  MSG_DONE    - dOn
+  {
+    { 0, 1, 1, 1, 1, 0, 1 },  // d
+    { 1, 1, 1, 1, 1, 1, 0 },  // O
+    { 1, 1, 1, 0, 1, 1, 0 },  // n
+  },
+  //  MSG_ERROR   - Err
+  {
+    { 1, 0, 0, 1, 1, 1, 1 },  // E
+    { 0, 0, 0, 0, 1, 0, 1 },  // r
+    { 0, 0, 0, 0, 1, 0, 1 },  // r
+  },
+  //  MSG_SETTING_UPLOAD    - SEu
+  {
+    { 1, 0, 1, 1, 0, 1, 1 },  // S
+    { 1, 0, 0, 1, 1, 1, 1 },  // E
+    { 0, 0, 1, 1, 1, 0, 0 },  // u
+  },
+  //  MSG_SETTING_DOWNLOAD  - SEd
+  {
+    { 1, 0, 1, 1, 0, 1, 1 },  // S
+    { 1, 0, 0, 1, 1, 1, 1 },  // E
+    { 0, 1, 1, 1, 1, 0, 1 },  // d
+  },
+  //  MSG_BLANK
+  {
+    { 0, 0, 0, 0, 0, 0, 0 },  // space
+    { 0, 0, 0, 0, 0, 0, 0 },  // space
+    { 0, 0, 0, 0, 0, 0, 0 },  // space
+  }
+};
 #define DIGIT_MINUS 10
 #define DIGIT_SPACE 11
 Display Display::instance;
 
+void Display::setSegs(int index, const byte* segList)
+{
+  memcpy(&ledStates[(index+1)*LED_NUMCOLS],segList,7);
+}
+
 void Display::setDigit(int index, int value)
 {
-  memcpy(&ledStates[(index+1)*LED_NUMCOLS],digitSegs[value],7);
+  setSegs(index,digitSegs[value]);
+}
+
+void Display::displayMessage(int index)
+{
+  for (int i=0; i<LED_NUMDIGITS; i++)
+    setSegs(i,msgSegs[index][i]);
+}
+
+void Display::displayNumString(char* digits, byte numDigits)
+{
+  for (int i=0; i<numDigits && i<LED_NUMDIGITS; i++)
+    setDigit(i,digits[i]);
+  if (numDigits<LED_NUMDIGITS)
+    for (int i=numDigits; i<LED_NUMDIGITS; i++)
+      setDigit(i,DIGIT_SPACE);
 }
 
 void Display::displayLEDsValue(int value, int digits=3)

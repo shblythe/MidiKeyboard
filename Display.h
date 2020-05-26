@@ -5,6 +5,9 @@
 
 class Display
 {
+public:
+  static const byte LED_NUMDIGITS=3;
+
 private:
   static const byte LED_NUMROWS=4;   // anodes
   static const byte LED_NUMCOLS=8;   // cathodes
@@ -22,7 +25,9 @@ private:
 #endif
 
   static Display instance;
+  void setSegs(int index, const byte* segList);
   void setDigit(int index, int value);
+  static const byte msgSegs[][LED_NUMDIGITS][7];  
   
 public:
   // Individual LEDs defined by index of r*LED_NUMCOLS+c
@@ -37,9 +42,21 @@ public:
   static const byte LED_DIG3_DP=31;
   static const byte LED_ON=1;
   static const byte LED_OFF=0;
+  enum Messages {
+    MSG_CHOOSE,
+    MSG_ON,
+    MSG_OFF,
+    MSG_DONE,
+    MSG_ERROR,
+    MSG_SETTING_UPLOAD,
+    MSG_SETTING_DOWNLOAD,
+    MSG_BLANK
+  };
 
   static Display* it() { return &instance; }
   void displayLEDsValue(int value, int digits=3);
+  void displayMessage(int index);
+  void displayNumString(char *digits, byte numDigits);
   void setLED(byte address, byte state);
   void setup();
   void loop();

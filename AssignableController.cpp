@@ -1,4 +1,5 @@
 #include "AssignableController.h"
+#include "EditMode.h"
 
 AssignableControllers AssignableControllers::instance;
 
@@ -19,4 +20,14 @@ void AssignableControllers::setup()
   mControllers[R6]    =new AssignableController(R6,     2,0,159,7);
   mControllers[R7]    =new AssignableController(R7,     3,0,159,7);
   mControllers[R8]    =new AssignableController(R8,     4,0,159,7);
+}
+
+bool AssignableController::checkEditMode()
+{
+  if (EditMode::it()->isActive())
+  {
+    EditMode::it()->assignController(this);
+    return true;
+  }
+  return false;
 }

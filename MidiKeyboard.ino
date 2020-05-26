@@ -2,6 +2,7 @@
 #include "Display.h"
 #include "Control.h"
 #include "AssignableController.h"
+#include "EditMode.h"
 
 #include "MidiInstance.h"
 
@@ -10,8 +11,6 @@ typedef enum {
   enBankR5_8
 } Bank;
 Bank bank;
-
-bool editMode;
 
 #define MAX_RVAL_INDEX 8
 #define RVAL_BANK_SIZE 4
@@ -52,8 +51,6 @@ void setupKeys()
 
 void loopKeys()
 {
-  if (editMode)
-    return;
   digitalWrite(kbCols[KB_NUMCOLS-1],LOW);
   for (int c=0; c<KB_NUMCOLS; c++)
   {
@@ -77,7 +74,10 @@ void loopKeys()
 #endif
     if (kbSwitchStates[i]!=old_kbSwitchStates[i])
     {
-      MidiInstance::it()->MIDI->sendNoteOn(Controllers::it()->getMiddleC()-12+i,(kbSwitchStates[i]==HIGH)?64:0,Controllers::it()->getChannel());
+      if (EditMode::it()->isActive())
+        EditMode::it()->queueKeyAction(i,kbSwitchStates[i]==HIGH);
+      else
+        MidiInstance::it()->MIDI->sendNoteOn(Controllers::it()->getMiddleC()-12+i,(kbSwitchStates[i]==HIGH)?64:0,Controllers::it()->getChannel());
       old_kbSwitchStates[i]=kbSwitchStates[i];
     }
   }
@@ -194,7 +194,9 @@ void loopButtons()
             AssignableControllers::it()->getController(AssignableControllers::DATA)->increment();
             break;
           case BTN_EDIT:
-            editMode=!editMode;
+            EditMode::it()->toggle();
+            if (!EditMode::it()->isActive())
+              Controllers::it()->getController(Controllers::CONTROL_OCTAVE)->displayValue(0);
 #if SERIAL_DEBUG          
             Serial.print("EDIT");
 #endif            
@@ -302,7 +304,7 @@ void setup() {
   MEM_DEBUG("/4:");
   setupAnalog();
   bank=enBankR1_4;
-  editMode=false;
+  EditMode::it()->setup();
   MEM_DEBUG("/5:");
   Controllers::it()->setup();
   MEM_DEBUG("/6:");
@@ -322,13 +324,14 @@ void loop() {
   // Update any status LEDs that should have changed state
   Display::it()->setLED(Display::LED_R1R4,(bank==enBankR1_4)?Display::LED_ON:Display::LED_OFF);
   Display::it()->setLED(Display::LED_R5R8,(bank==enBankR5_8)?Display::LED_ON:Display::LED_OFF);
-  Display::it()->setLED(Display::LED_EDIT,editMode?Display::LED_ON:Display::LED_OFF);
-  Display::it()->setLED(Display::LED_DATA_PLUS,(!editMode && Controllers::it()->getMiddleC()>DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
-  Display::it()->setLED(Display::LED_DATA_MINUS,(!editMode && Controllers::it()->getMiddleC()<DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
+  Display::it()->setLED(Display::LED_EDIT,EditMode::it()->isActive()?Display::LED_ON:Display::LED_OFF);
+  Display::it()->setLED(Display::LED_DATA_PLUS,(!EditMode::it()->isActive() && Controllers::it()->getMiddleC()>DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
+  Display::it()->setLED(Display::LED_DATA_MINUS,(!EditMode::it()->isActive() && Controllers::it()->getMiddleC()<DEFAULT_MIDDLE_C)?Display::LED_ON:Display::LED_OFF);
 #endif
   Display::it()->loop();
   Display::it()->loopTest();
   loopAnalog();
+  EditMode::it()->loop();
 #if SERIAL_DEBUG  
   Serial.println();
 #endif  

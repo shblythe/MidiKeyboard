@@ -17,7 +17,6 @@ protected:
   char mDefaultValue;
   char mLastValue[MAX_CHANNEL];
   virtual char setControlValue(byte channel, char value)=0;
-  virtual void displayValue(byte channel) {};
 
 public:
   Control(byte number, char defaultValue, char maximum=127, char minimum=0)
@@ -61,6 +60,8 @@ public:
   }
 
   virtual char getValue(byte channel) { return mLastValue[channel]; }
+  virtual void displayValue(byte channel) {};
+  byte getNumber() { return mNumber; }
 };
 
 class DisplayedControl : public Control
@@ -70,7 +71,6 @@ private:
 public:
   DisplayedControl(byte number, char defaultValue, char maximum=127, char minimum=0, byte numDigits=3)
     :Control(number, defaultValue, maximum, minimum),mNumDigits(numDigits) {}
-protected:
   virtual void displayValue(byte channel)
   {
     Display::it()->displayLEDsValue(mLastValue[channel],mNumDigits);

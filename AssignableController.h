@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include "Control.h"
 
+#pragma once
+class EditMode;
+
 class AssignableController
 {
 private:
@@ -27,6 +30,11 @@ public:
     mControl=Controllers::it()->getController(mDefaultControl);
   }
 
+  byte getControlNumber()
+  {
+    return mControl->getNumber();
+  }
+
   bool setControl(byte index)
   {
     if (index<mMinParameter || index>mMaxParameter)
@@ -35,10 +43,32 @@ public:
     return true;
   }
   void setChannel(byte channel) { mChannel=channel; }
-  char setValue(char value) { return mControl->setValue(mChannel,value); }
-  char setValue(int srcValue, int srcMin, int srcMax) { return mControl->setValue(mChannel,srcValue,srcMin,srcMax);}
-  char increment() { return mControl->setValue(mChannel,mControl->getValue(mChannel)+1); }
-  char decrement() { return mControl->setValue(mChannel,mControl->getValue(mChannel)-1); }
+  char setValue(char value) {
+    if (!checkEditMode())
+      return mControl->setValue(mChannel,value);
+    return 0;
+  }
+  char setValue(int srcValue, int srcMin, int srcMax) { 
+    if (!checkEditMode())
+      return mControl->setValue(mChannel,srcValue,srcMin,srcMax);
+    return 0;
+  }
+
+  char increment()
+  {
+    if (!checkEditMode())
+      return mControl->setValue(mChannel,mControl->getValue(mChannel)+1);
+    return 0;
+  }
+
+  char decrement()
+  {
+    if (!checkEditMode())
+      return mControl->setValue(mChannel,mControl->getValue(mChannel)-1);
+    return 0;
+  }
+
+  bool checkEditMode();
 };
 
 class AssignableControllers
