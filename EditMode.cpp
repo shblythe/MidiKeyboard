@@ -54,7 +54,7 @@ void EditMode::loop()
 					num*=10;
 					num+=numEntry[i];
 				}
-				if (num<256 && assignableController->setControl(num))
+				if (numDigitsEntered==0 || num<256 && assignableController->setControl(num))
 					state=STATE_EDITMENU;
 				else
 					state=STATE_ERROR;
