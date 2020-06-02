@@ -127,14 +127,23 @@ protected:
 
 class MidiRPNControl:public DisplayedControl
 {
+  int mRpnNumber;
+
   using DisplayedControl::DisplayedControl;
 protected:
   virtual char setControlValue(byte channel, char value)
   {
-    MidiInstance::it()->MIDI->beginRpn(mNumber,channel);
+    MidiInstance::it()->MIDI->beginRpn(mRpnNumber,channel);
     MidiInstance::it()->MIDI->sendRpnValue(value,channel);
     MidiInstance::it()->MIDI->endRpn(channel);
     return value;
+  }
+
+public:
+  MidiRPNControl(int number, int rpnNumber, char defaultValue, char maximum=127, char minimum=0, byte numDigits=3)
+    :DisplayedControl(number,defaultValue,maximum,minimum,numDigits)
+  {
+    mRpnNumber=rpnNumber;
   }
 };
 
@@ -151,10 +160,10 @@ protected:
   }
 
 public:
-  MidiNRPNControl::MidiNRPNControl(int number, char defaultValue, char maximum=127, char minimum=0, byte numDigits=3)
-    :DisplayedControl(0,defaultValue,maximum,minimum,numDigits)
+  MidiNRPNControl(int number, int nrpnNumber, char defaultValue, char maximum=127, char minimum=0, byte numDigits=3)
+    :DisplayedControl(number,defaultValue,maximum,minimum,numDigits)
   {
-    mNrpnNumber=number;
+    mNrpnNumber=nrpnNumber;
   }
 };
 
