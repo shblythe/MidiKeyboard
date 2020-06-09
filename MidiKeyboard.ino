@@ -23,10 +23,11 @@ Bank bank;
 /*
  * Keyboard MUX handler
  */
-#define KB_NUMROWS 4
+#define KB_NUMROWS 8
 #define KB_NUMCOLS 8
 const byte kbRows[]={53,49,45,41,51,47,43,39};
 const byte kbCols[]={52,50,48,46,44,42,40,38};
+#define MIN_BTN2_INDEX 32
 
 byte kbSwitchStates[KB_NUMROWS*KB_NUMCOLS];
 byte old_kbSwitchStates[KB_NUMROWS*KB_NUMCOLS];
@@ -48,6 +49,8 @@ void setupKeys()
     pinMode(kbRows[i],INPUT);
   memset(old_kbSwitchStates,LOW,KB_NUMROWS*KB_NUMCOLS);
 }
+
+unsigned long millisTest=0;
 
 void loopKeys()
 {
@@ -74,10 +77,27 @@ void loopKeys()
 #endif
     if (kbSwitchStates[i]!=old_kbSwitchStates[i])
     {
-      if (EditMode::it()->isActive())
-        EditMode::it()->queueKeyAction(i,kbSwitchStates[i]==HIGH);
+      if (i<MIN_BTN2_INDEX)
+      {
+
+        if (EditMode::it()->isActive())
+          EditMode::it()->queueKeyAction(i,kbSwitchStates[i]==HIGH);
+        else
+        {
+          if (kbSwitchStates[i]==HIGH)
+            millisTest=millis();
+          else
+            MidiInstance::it()->MIDI->sendNoteOn(Controllers::it()->getMiddleC()-12+i,0,Controllers::it()->getChannel());
+        }
+      }
       else
-        MidiInstance::it()->MIDI->sendNoteOn(Controllers::it()->getMiddleC()-12+i,(kbSwitchStates[i]==HIGH)?64:0,Controllers::it()->getChannel());
+      {
+        if (kbSwitchStates[i]==HIGH)
+        {
+          byte velocity=(32-min(millis()-millisTest,28))*4;
+          MidiInstance::it()->MIDI->sendNoteOn(Controllers::it()->getMiddleC()-12+(i-MIN_BTN2_INDEX),velocity,Controllers::it()->getChannel());
+        }
+      }
       old_kbSwitchStates[i]=kbSwitchStates[i];
     }
   }
