@@ -50,7 +50,7 @@ void setupKeys()
   memset(old_kbSwitchStates,LOW,KB_NUMROWS*KB_NUMCOLS);
 }
 
-unsigned long millisTest=0;
+unsigned long millisContact[MIN_BTN2_INDEX];
 
 void loopKeys()
 {
@@ -85,7 +85,7 @@ void loopKeys()
         else
         {
           if (kbSwitchStates[i]==HIGH)
-            millisTest=millis();
+            millisContact[i]=millis();
           else
             MidiInstance::it()->MIDI->sendNoteOn(Controllers::it()->getMiddleC()-12+i,0,Controllers::it()->getChannel());
         }
@@ -94,7 +94,7 @@ void loopKeys()
       {
         if (kbSwitchStates[i]==HIGH)
         {
-          byte velocity=(32-min(millis()-millisTest,28))*4;
+          byte velocity=(32-min(millis()-millisContact[i-MIN_BTN2_INDEX],28))*4;
           MidiInstance::it()->MIDI->sendNoteOn(Controllers::it()->getMiddleC()-12+(i-MIN_BTN2_INDEX),velocity,Controllers::it()->getChannel());
         }
       }
