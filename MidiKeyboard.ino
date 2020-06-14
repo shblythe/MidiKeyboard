@@ -38,6 +38,21 @@ const char* note_names[]={
   "C3"
 };
 
+//Velocity curves
+//To save on calculation effort for the CPU, these are precalculated in Excel, the index is the number of milliseconds
+//between contact, 0-80ms.
+#define MAX_VEL_CURVE_INDEX 80
+const byte linearCurve[MAX_VEL_CURVE_INDEX+1]={127, 127, 127, 125, 124, 122, 121, 119, 118, 116, 114, 113, 111, 110, 108, 107, 105, 103, 102, 100, 99, 97, 95, 94, 92, 91, 89, 88, 86, 84, 83, 81, 80, 78, 77, 75, 73, 72, 70, 69, 67, 66, 64, 62, 61, 59, 58, 56, 54, 53, 51, 50, 48, 47, 45, 43, 42, 40, 39, 37, 36, 34, 32, 31, 29, 28, 26, 25, 23, 21, 20, 18, 17, 15, 13, 12, 10, 9, 7, 6, 4};
+const byte convexCurve[MAX_VEL_CURVE_INDEX+1]={127, 127, 127, 127, 127, 127, 127, 126, 126, 126, 125, 125, 125, 124, 123, 123, 122, 121, 121, 120, 119, 118, 117, 116, 115, 114, 113, 112, 111, 109, 108, 107, 105, 104, 102, 101, 99, 98, 96, 94, 93, 91, 89, 87, 86, 84, 82, 80, 78, 76, 74, 72, 70, 68, 66, 63, 61, 59, 57, 54, 52, 50, 48, 45, 43, 41, 38, 36, 33, 31, 29, 26, 24, 21, 19, 16, 14, 11, 9, 6, 4};
+const byte saturatedCurve[MAX_VEL_CURVE_INDEX+1]={127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 126, 125, 125, 124, 122, 121, 119, 118, 116, 114, 111, 109, 106, 104, 101, 98, 94, 91, 87, 84, 80, 76, 72, 68, 64, 60, 55, 51, 47, 42, 37, 33, 28, 23, 18, 14, 9, 4};
+const byte concaveCurve[MAX_VEL_CURVE_INDEX+1]={127, 127, 127, 122, 116, 111, 106, 102, 97, 93, 88, 84, 80, 76, 73, 69, 66, 62, 59, 56, 53, 50, 48, 45, 43, 40, 38, 36, 34, 32, 30, 28, 26, 25, 23, 22, 21, 19, 18, 17, 16, 15, 14, 13, 12, 11, 11, 10, 9, 9, 8, 8, 7, 7, 7, 6, 6, 6, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
+const byte* velocityCurves[]={
+  linearCurve,
+  convexCurve,
+  saturatedCurve,
+  concaveCurve
+};
+
 void setupKeys()
 {
   for (int i=0; i<KB_NUMCOLS; i++)
@@ -54,6 +69,7 @@ unsigned long millisContact[MIN_BTN2_INDEX];
 
 void loopKeys()
 {
+  const byte* curve=velocityCurves[Controllers::it()->getKeyboardCurve()];
   digitalWrite(kbCols[KB_NUMCOLS-1],LOW);
   for (int c=0; c<KB_NUMCOLS; c++)
   {
@@ -94,7 +110,7 @@ void loopKeys()
       {
         if (kbSwitchStates[i]==HIGH)
         {
-          byte velocity=(32-min(millis()-millisContact[i-MIN_BTN2_INDEX],28))*4;
+          byte velocity=curve[min(MAX_VEL_CURVE_INDEX,millis()-millisContact[i-MIN_BTN2_INDEX])];
           MidiInstance::it()->MIDI->sendNoteOn(Controllers::it()->getMiddleC()-12+(i-MIN_BTN2_INDEX),velocity,Controllers::it()->getChannel());
         }
       }

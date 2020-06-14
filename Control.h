@@ -244,4 +244,9 @@ public:
   {
     return mControls[CONTROL_OCTAVE]->getValue(0)*12+mControls[CONTROL_TRANSPOSE]->getValue(0)+DEFAULT_MIDDLE_C;
   }
+
+  char getKeyboardCurve()
+  {
+    return mControls[CONTROL_KEYBOARD_CURVE]->getValue(0);
+  }
 };

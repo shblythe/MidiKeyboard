@@ -43,7 +43,7 @@ void Controllers::setup()
   mControls[CONTROL_OCTAVE]=new ValueControl(CONTROL_OCTAVE,0,3,-3,1);
   mControls[CONTROL_TRANSPOSE]=new ValueControl(CONTROL_TRANSPOSE,0,12,-12,2);
   mControls[CONTROL_TEMPO]=new ValueControl(CONTROL_TEMPO,0,0,0); // Not sure how to do tempo yet!
-  mControls[CONTROL_KEYBOARD_CURVE]=new ValueControl(CONTROL_KEYBOARD_CURVE,0,0); // UNSUPPORTED (yet!)
+  mControls[CONTROL_KEYBOARD_CURVE]=new ValueControl(CONTROL_KEYBOARD_CURVE,0,3); // UNSUPPORTED (yet!)
   mControls[CONTROL_PEDAL_A_CURVE]=new ValueControl(CONTROL_PEDAL_A_CURVE,0,0); // UNSUPPORTED (yet!)
   mControls[CONTROL_PEDAL_B_CURVE]=new ValueControl(CONTROL_PEDAL_B_CURVE,0,0); // UNSUPPORTED (yet!)
 }
