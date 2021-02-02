@@ -1,6 +1,6 @@
 # What?
 
-This project is reimplementation of a cheap Midi keyboard's processor board using an Arduino.
+This project is a reimplementation of a cheap Midi keyboard's processor board using an Arduino.
 
 # Why?
 
